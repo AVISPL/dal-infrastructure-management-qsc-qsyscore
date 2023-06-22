@@ -1,5 +1,7 @@
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 /**
  * DeviceControlling
  *
@@ -13,5 +15,5 @@ public interface DeviceControlling<T> {
 	 *
 	 * @param response String store all information of a control
 	 */
-	void controlDevice(String response);
+	void controlDevice(JsonNode response);
 }

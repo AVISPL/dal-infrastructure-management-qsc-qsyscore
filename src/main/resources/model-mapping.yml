@@ -1,0 +1,18 @@
+models:
+  - model:
+      name: Processor
+      filter: true
+      mapping:
+        Status: get("result")?.get("Controls")?.get
+        StatusLed:
+        ClockMaster:
+        ClockOffset:
+        GrandmasterName:
+        ProcessorTemperature(C):
+        FanSpeed:
+        SystemTemperature(C):
+        ParentPortName:
+        USBConnected:
+        USBECSpeakerphone1InActive:
+        USBECSpeakerphone1OutActive:
+      properties:

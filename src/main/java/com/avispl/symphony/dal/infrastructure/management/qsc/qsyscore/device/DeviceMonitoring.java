@@ -1,8 +1,6 @@
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device;
 
-import java.util.List;
-
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.DeviceControl;
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * DeviceMonitoring
@@ -17,5 +15,5 @@ public interface DeviceMonitoring {
 	 *
 	 * @param deviceControl list all control of device
 	 */
-	void monitoringDevice(List<DeviceControl> deviceControl);
+	void monitoringDevice(JsonNode deviceControl);
 }

@@ -1,9 +1,8 @@
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice;
 
-import java.util.List;
+import com.fasterxml.jackson.databind.JsonNode;
 
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.Device;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.DeviceControl;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
 
 /**
  * VideoSourceDevice
@@ -12,14 +11,14 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.Device
  * Created on 6/18/2023
  * @since 1.0.0
  */
-public class VideoSourceDevice extends Device {
+public class VideoSourceDevice extends QSYSPeripheralDevice {
 	@Override
-	public void controlDevice(String response) {
+	public void controlDevice(JsonNode response) {
 
 	}
 
 	@Override
-	public void monitoringDevice(List<DeviceControl> deviceControl) {
+	public void monitoringDevice(JsonNode deviceControl) {
 
 	}
 }
