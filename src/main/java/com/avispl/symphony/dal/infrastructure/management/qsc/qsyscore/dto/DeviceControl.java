@@ -17,7 +17,17 @@ public class DeviceControl {
 	@JsonAlias("Type")
 	private String type;
 	@JsonAlias("Value")
-	private Object value;
+	private boolean switchValue;
+	@JsonAlias("Value")
+	private float sliderValue;
+	@JsonAlias("ValueMin")
+	private float minValue;
+	@JsonAlias("ValueMax")
+	private float maxValue;
+	@JsonAlias("StringMin")
+	private String minValueString;
+	@JsonAlias("StringMax")
+	private String maxValueString;
 	@JsonAlias("String")
 	private String string;
 	@JsonAlias("Position")
@@ -62,21 +72,75 @@ public class DeviceControl {
 	}
 
 	/**
-	 * Retrieves {@link #value}
+	 * Retrieves {@link #switchValue}
 	 *
-	 * @return value of {@link #value}
+	 * @return value of {@link #switchValue}
 	 */
-	public Object getValue() {
-		return value;
+	public boolean isSwitchValue() {
+		return switchValue;
 	}
 
 	/**
-	 * Sets {@link #value} value
+	 * Sets {@link #switchValue} value
 	 *
-	 * @param value new value of {@link #value}
+	 * @param switchValue new value of {@link #switchValue}
 	 */
-	public void setValue(Object value) {
-		this.value = value;
+	public void setSwitchValue(boolean switchValue) {
+		this.switchValue = switchValue;
+	}
+
+	/**
+	 * Retrieves {@link #sliderValue}
+	 *
+	 * @return value of {@link #sliderValue}
+	 */
+	public float getSliderValue() {
+		return sliderValue;
+	}
+
+	/**
+	 * Sets {@link #sliderValue} value
+	 *
+	 * @param sliderValue new value of {@link #sliderValue}
+	 */
+	public void setSliderValue(float sliderValue) {
+		this.sliderValue = sliderValue;
+	}
+
+	/**
+	 * Retrieves {@link #minValue}
+	 *
+	 * @return value of {@link #minValue}
+	 */
+	public float getMinValue() {
+		return minValue;
+	}
+
+	/**
+	 * Sets {@link #minValue} value
+	 *
+	 * @param minValue new value of {@link #minValue}
+	 */
+	public void setMinValue(float minValue) {
+		this.minValue = minValue;
+	}
+
+	/**
+	 * Retrieves {@link #maxValue}
+	 *
+	 * @return value of {@link #maxValue}
+	 */
+	public float getMaxValue() {
+		return maxValue;
+	}
+
+	/**
+	 * Sets {@link #maxValue} value
+	 *
+	 * @param maxValue new value of {@link #maxValue}
+	 */
+	public void setMaxValue(float maxValue) {
+		this.maxValue = maxValue;
 	}
 
 	/**
@@ -131,5 +195,41 @@ public class DeviceControl {
 	 */
 	public void setDirection(String direction) {
 		this.direction = direction;
+	}
+
+	/**
+	 * Retrieves {@link #minValueString}
+	 *
+	 * @return value of {@link #minValueString}
+	 */
+	public String getMinValueString() {
+		return minValueString;
+	}
+
+	/**
+	 * Sets {@link #minValueString} value
+	 *
+	 * @param minValueString new value of {@link #minValueString}
+	 */
+	public void setMinValueString(String minValueString) {
+		this.minValueString = minValueString;
+	}
+
+	/**
+	 * Retrieves {@link #maxValueString}
+	 *
+	 * @return value of {@link #maxValueString}
+	 */
+	public String getMaxValueString() {
+		return maxValueString;
+	}
+
+	/**
+	 * Sets {@link #maxValueString} value
+	 *
+	 * @param maxValueString new value of {@link #maxValueString}
+	 */
+	public void setMaxValueString(String maxValueString) {
+		this.maxValueString = maxValueString;
 	}
 }

@@ -11,7 +11,8 @@ public enum RpcMethod {
 	STATUS_GET("StatusGet"),
 	GET_COMPONENTS("Component.GetComponents"),
 	GET_CONTROLS("Component.GetControls"),
-	GET("Component.Get");
+	GET("Component.Get"),
+	SET_CONTROLS("Component.Set");
 
 	private final String name;
 
@@ -37,19 +38,36 @@ public enum RpcMethod {
 		return "{\n"
 				+ "  \"jsonrpc\": \"2.0\",\n"
 				+ "  \"method\": \"%s\", \n"
-				+ "  \"params\": \"%s\",\n"
+				+ "  \"params\": %s,\n"
 				+ "  \"id\": 1234\n"
 				+ "}\n\00";
 	}
 
 	public static String getParamsString(RpcMethod rcpMethod) {
 		switch (rcpMethod) {
+			case GET:
+				return " {\n"
+						+ "    \"Name\": \"%s\",\n"
+						+ "    \"Controls\": [\n"
+						+ "      { \"Name\": \"%s\" }\n"
+						+ "    ]\n"
+						+ "  }";
+			case SET_CONTROLS:
+				return "{\n"
+						+ "    \"Name\": \"%s\",\n"
+						+ "    \"Controls\": [\n"
+						+ "      {\n"
+						+ "        \"Name\": \"%s\", \n"
+						+ "        \"Value\": %s\n"
+						+ "      }\n"
+						+ "    ]\n"
+						+ "  }";
 			case GET_CONTROLS:
-				return "{name:%s}";
+				return "{\"Name\":\"%s\"}";
 			case GET_COMPONENTS:
 			case STATUS_GET:
 			default:
-				return "";
+				return "\"\"";
 		}
 	}
 }

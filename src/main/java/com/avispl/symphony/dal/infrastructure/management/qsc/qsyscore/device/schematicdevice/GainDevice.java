@@ -1,8 +1,6 @@
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.schematicdevice;
 
-import java.util.List;
-
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.DeviceControl;
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * GainDevice
@@ -18,12 +16,12 @@ public class GainDevice extends SchematicDevice {
 	}
 
 	@Override
-	public void controlDevice(String response) {
+	public void controlDevice(JsonNode response) {
 //		ObjectMapper objectMapper=ObjectMapperSingleton.getInstance();
 	}
 
 	@Override
-	public void monitoringDevice(List<DeviceControl> deviceControls) {
+	public void monitoringDevice(JsonNode deviceControls) {
 //		for (DeviceControl deviceControl : deviceControls) {
 //			switch (deviceControl.getName()) {
 //				case "bypass":

@@ -1,6 +1,5 @@
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
@@ -12,15 +11,14 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DesignInfo {
-	@JsonAlias("params")
-	Result result;
+	DesignResult result;
 
 	/**
 	 * Retrieves {@link #result}
 	 *
 	 * @return value of {@link #result}
 	 */
-	public Result getResult() {
+	public DesignResult getResult() {
 		return result;
 	}
 
@@ -29,7 +27,7 @@ public class DesignInfo {
 	 *
 	 * @param result new value of {@link #result}
 	 */
-	public void setResult(Result result) {
+	public void setResult(DesignResult result) {
 		this.result = result;
 	}
 }

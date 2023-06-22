@@ -20,10 +20,10 @@ public class DeviceInfoData {
 	private String modelName;
 	private String modelCode;
 	Firmware firmware;
-	private int uptime;
+	private long uptime;
 	private String access;
 	private boolean engineOnline;
-	private float engineUptime;
+	private long engineUptime;
 	private String redundancy = null;
 	Status status;
 	private boolean isComplete;
@@ -214,7 +214,7 @@ public class DeviceInfoData {
 	 *
 	 * @return value of {@link #uptime}
 	 */
-	public int getUptime() {
+	public long getUptime() {
 		return uptime;
 	}
 
@@ -223,7 +223,7 @@ public class DeviceInfoData {
 	 *
 	 * @param uptime new value of {@link #uptime}
 	 */
-	public void setUptime(int uptime) {
+	public void setUptime(long uptime) {
 		this.uptime = uptime;
 	}
 
@@ -277,7 +277,7 @@ public class DeviceInfoData {
 	 *
 	 * @param engineUptime new value of {@link #engineUptime}
 	 */
-	public void setEngineUptime(float engineUptime) {
+	public void setEngineUptime(long engineUptime) {
 		this.engineUptime = engineUptime;
 	}
 
@@ -311,7 +311,7 @@ public class DeviceInfoData {
 	/**
 	 * Sets {@link #isComplete} value
 	 *
-	 * @param isComplete new value of {@link #isComplete}
+	 * @param complete new value of {@link #isComplete}
 	 */
 	public void setComplete(boolean complete) {
 		isComplete = complete;
