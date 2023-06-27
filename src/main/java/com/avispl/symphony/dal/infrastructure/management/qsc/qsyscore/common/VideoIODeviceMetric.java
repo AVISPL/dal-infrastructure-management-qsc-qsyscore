@@ -33,7 +33,7 @@ public enum VideoIODeviceMetric {
 	NETWORKED_VIDEO_HDMI_OUTPUT_PEAK_BITRATE("NetworkedVideo#HDMIOutput%sPeakBitrate(Mbps)", "network.stats.hdmi.%s.peak.bitrate"),
 	NETWORKED_VIDEO_HDMI_OUTPUT_BMCAST_IP_SRC("NetworkedVideo#HDMIOutput%sBMcastIPSrc", "network.stats.hdmi.%s.bmcast.ip.src"),
 	NETWORKED_VIDEO_HDMI_OUTPUT_PACKET_LOST("NetworkedVideo#HDMIOutput%sPacketLost", "network.stats.hdmi.%s.packets.lost"),
-	NETWORKED_VIDEO_HDMI_OUTPUT_PACKET_LOSS("NetworkedVideo#HDMIOutput%sPacketLoss(%)", "network.stats.hdmi.%s.packet.loss.%"),
+	NETWORKED_VIDEO_HDMI_OUTPUT_PACKET_LOSS("NetworkedVideo#HDMIOutput%sPacketLoss(%%)", "network.stats.hdmi.%s.packet.loss.%"),
 	NETWORKED_VIDEO_HDMI_OUTPUT_PACKET_COUNT("NetworkedVideo#HDMIOutput%sPacketCount", "network.stats.hdmi.%s.packet.count"),
 	NETWORKED_VIDEO_HDMI_OUTPUT_SEQUENCE_ERRORS("NetworkedVideo#HDMIOutput%sSequenceErrors", "network.stats.hdmi.%s.sequence.error.count"),
 	NETWORKED_VIDEO_HDMI_OUTPUT_HW_DROP_COUNT("NetworkedVideo#HDMIOutput%sHWDropCount", "network.stats.hdmi.%s.hw.drop.count"),
