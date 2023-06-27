@@ -18,12 +18,17 @@ public enum ControlInterfaceDeviceMetric {
 	STATUS_LED("StatusLed", "status.led"),
 	MEMORY_USAGE("MemoryUsage(%)", "memory.usage"),
 	UCI_CURRENT_UCI("UCICurrentUCI", "current.uci"),
-	SCREEN_TOUCH_ACTIVITY("ScreenControl#TouchActivity", "touched"),
-	SCREEN_BLACKLIGHT_CURRENT_VALUE("ScreenControl#Blacklightcurrentvalue(%)", "screen.brightness");
+	SCREEN_TOUCH_ACTIVITY("ScreenControl#TouchActivity", "touched");
 
 	private final String metric;
 	private final String property;
 
+	/**
+	 * Parameterized constructor
+	 *
+	 * @param metric metric that show on UI
+	 * @param property corresponding response field
+	 */
 	ControlInterfaceDeviceMetric(String metric, String property) {
 		this.metric = metric;
 		this.property = property;

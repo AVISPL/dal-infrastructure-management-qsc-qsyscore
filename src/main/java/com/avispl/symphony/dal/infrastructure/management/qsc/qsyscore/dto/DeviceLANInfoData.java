@@ -19,7 +19,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DeviceLANInfoData {
 	private String hostname;
-	List<InterfaceInfo> interfaces = new ArrayList<InterfaceInfo>();
+	List<InterfaceInfo> interfaces = new ArrayList<>();
 
 	/**
 	 * Retrieves {@link #hostname}

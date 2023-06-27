@@ -7,7 +7,7 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * DesignInfo contail DesignResult
+ * DesignInfo contain DesignResult
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 6/15/2023

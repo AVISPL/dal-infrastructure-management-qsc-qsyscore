@@ -8,7 +8,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * QSYSCoreConstant class provides during the monitoring and controlling process
+ * QSYSCoreConstant contains constants used in monitoring and controlling
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 5/30/2023
@@ -17,7 +17,6 @@ import java.util.Set;
 public class QSYSCoreConstant {
 
 	public static final int QRC_PORT = 1710;
-
 	public static final int MIN_PORT = 0;
 	public static final int MAX_PORT = 65535;
 	public static final String AUTHORIZED = "Authorized";
@@ -38,6 +37,7 @@ public class QSYSCoreConstant {
 	public static final String DB_UNIT = "dB";
 	public static final String EMPTY = "";
 	public static final String COMMA = ",";
+	public static final String ZERO = "0";
 
 	// Device response Type
 	public static final String DISPLAY_DEVICE = "vst_hdmi_display";
@@ -47,7 +47,6 @@ public class QSYSCoreConstant {
 	public static final String VIDEO_IO_DEVICE = "vstreamer_status";
 	public static final String VIDEO_SOURCE_DEVICE = "vst_hdmi_source";
 	public static final String CONTROL_INTERFACE_DEVICE = "touch_screen_status";
-
 	public static final Set<String> SUPPORTED_DEVICE_TYPE = new HashSet<>(
 			Arrays.asList(PROCESSOR_DEVICE, DISPLAY_DEVICE, STREAM_INPUT_DEVICE, STREAM_OUTPUT_DEVICE, VIDEO_IO_DEVICE, VIDEO_SOURCE_DEVICE, CONTROL_INTERFACE_DEVICE));
 
@@ -73,8 +72,6 @@ public class QSYSCoreConstant {
 	public static final String CONTROLS = "Controls";
 	public static final String CONTROL_NAME = "Name";
 	public static final String CONTROL_VALUE_STRING = "String";
-
-	public static final String ZERO = "0";
 
 	// Device Type
 	public static final String PROCESSOR_TYPE="Processor";

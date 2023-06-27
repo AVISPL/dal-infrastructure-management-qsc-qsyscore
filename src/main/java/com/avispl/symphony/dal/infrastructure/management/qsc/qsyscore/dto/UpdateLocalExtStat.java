@@ -21,6 +21,11 @@ public class UpdateLocalExtStat {
 
 	/**
 	 * Parameterized constructor
+	 *
+	 * @param property property of control
+	 * @param value value of control
+	 * @param namedComponent name of component
+	 * @param controllingMetric control type
 	 */
 	public UpdateLocalExtStat(String property, String value, String namedComponent, GainControllingMetric controllingMetric) {
 		this.property = property;
@@ -30,7 +35,7 @@ public class UpdateLocalExtStat {
 	}
 
 	/**
-	 * Retrieves {@code {@link #property}}
+	 * Retrieves {@link #property}
 	 *
 	 * @return value of {@link #property}
 	 */
@@ -39,16 +44,16 @@ public class UpdateLocalExtStat {
 	}
 
 	/**
-	 * Sets {@code property}
+	 * Sets {@link #property} value
 	 *
-	 * @param property the {@code java.lang.String} field
+	 * @param property new value of {@link #property}
 	 */
 	public void setProperty(String property) {
 		this.property = property;
 	}
 
 	/**
-	 * Retrieves {@code {@link #value}}
+	 * Retrieves {@link #value}
 	 *
 	 * @return value of {@link #value}
 	 */
@@ -57,16 +62,16 @@ public class UpdateLocalExtStat {
 	}
 
 	/**
-	 * Sets {@code value}
+	 * Sets {@link #value} value
 	 *
-	 * @param value the {@code java.lang.String} field
+	 * @param value new value of {@link #value}
 	 */
 	public void setValue(String value) {
 		this.value = value;
 	}
 
 	/**
-	 * Retrieves {@code {@link #namedComponent}}
+	 * Retrieves {@link #namedComponent}
 	 *
 	 * @return value of {@link #namedComponent}
 	 */
@@ -75,16 +80,16 @@ public class UpdateLocalExtStat {
 	}
 
 	/**
-	 * Sets {@code namedComponent}
+	 * Sets {@link #namedComponent} value
 	 *
-	 * @param namedComponent the {@code java.lang.String} field
+	 * @param namedComponent new value of {@link #namedComponent}
 	 */
 	public void setNamedComponent(String namedComponent) {
 		this.namedComponent = namedComponent;
 	}
 
 	/**
-	 * Retrieves {@code {@link #controllingMetric}}
+	 * Retrieves {@link #controllingMetric}
 	 *
 	 * @return value of {@link #controllingMetric}
 	 */
@@ -93,9 +98,9 @@ public class UpdateLocalExtStat {
 	}
 
 	/**
-	 * Sets {@code controllingMetric}
+	 * Sets {@link #controllingMetric} value
 	 *
-	 * @param controllingMetric the {@code com.avispl.symphony.dal.device.core510i.common.QSYSCoreControllingMetric} field
+	 * @param controllingMetric new value of {@link #controllingMetric}
 	 */
 	public void setControllingMetric(GainControllingMetric controllingMetric) {
 		this.controllingMetric = controllingMetric;

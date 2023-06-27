@@ -2,8 +2,12 @@
  * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
  */
 
+import java.awt.image.AreaAveragingScaleFilter;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
@@ -16,6 +20,9 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.QSYSCoreAggregatorCommunicator;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.DisplayDevice;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.streamiodevice.StreamInputDevice;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.streamiodevice.StreamOutputDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreMonitoringMetric;
 
 /**
@@ -54,7 +61,7 @@ public class TestQSYSCoreAggregatorCommunicator {
 		Assertions.assertEquals("CeeSalt_TestCore_v3.2", stats.get(QSYSCoreMonitoringMetric.DESIGN_NAME.getName()));
 		Assertions.assertEquals("9.8.0-2304.003", stats.get(QSYSCoreMonitoringMetric.FIRMWARE_VERSION.getName()));
 		Assertions.assertEquals("Running", stats.get(QSYSCoreMonitoringMetric.STATUS.getName()));
-		Assertions.assertEquals("169.254.232.117", stats.get(QSYSCoreMonitoringMetric.LAN_A.getName() + QSYSCoreConstant.HASH + QSYSCoreMonitoringMetric.LAN_A_IP_ADDRESS.getName()));
+		Assertions.assertEquals("169.254.232.117", stats.get(QSYSCoreMonitoringMetric.LAN_A.getName() + QSYSCoreConstant.HASH + QSYSCoreMonitoringMetric.IP_ADDRESS.getName()));
 	}
 
 	@Test
@@ -82,12 +89,43 @@ public class TestQSYSCoreAggregatorCommunicator {
 	}
 
 	@Test
-	public void testFilterGainName() {
+	public void testFilterGainName() throws Exception {
+		qSYSCoreCommunicator.setFilterGainName("ABC");
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		Assertions.assertTrue(stats.containsKey("Gain:ABC#Bypass"));
+		Assertions.assertFalse(stats.containsKey("Gain:123456#Bypass"));
+	}
 
+	@Test
+	public void testFilterComponentName() throws Exception {
+		Set<String> stringNameSet = new HashSet<>(Arrays.asList("Generic_AV_Source_HDMI-Source-3", "Status_CeeSalt-Decoder"));
+		qSYSCoreCommunicator.setFilterComponentName("Generic_AV_Source_HDMI-Source-3, Status_CeeSalt-Decoder");
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		TimeUnit.MILLISECONDS.sleep(60000);
+		List<AggregatedDevice> aggregatedDevices = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		for (AggregatedDevice aggregatedDevice : aggregatedDevices) {
+			Assertions.assertTrue(stringNameSet.contains(aggregatedDevice.getDeviceId()));
+		}
+	}
+
+	@Test
+	public void testFilterDeviceType() throws Exception {
+		Set<String> stringSet = new HashSet<>(Arrays.asList("Software_Dante_RX_Software-Dante-RX-1", "Software_Dante_TX_Software-Dante-TX-1", "Generic_HDMI_Display_HDMI-Display-1"));
+		qSYSCoreCommunicator.setFilterDeviceType(QSYSCoreConstant.STREAM_IO_TYPE + ",  " + QSYSCoreConstant.DISPLAY_TYPE);
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		TimeUnit.MILLISECONDS.sleep(60000);
+		List<AggregatedDevice> aggregatedDevices = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		for (AggregatedDevice aggregatedDevice : aggregatedDevices) {
+			Assertions.assertTrue(stringSet.contains(aggregatedDevice.getDeviceId()));
+		}
 	}
 
 	@Test
 	public void testCustom() {
-
+		String s = "";
+		Integer a = Integer.parseInt(s);
 	}
 }

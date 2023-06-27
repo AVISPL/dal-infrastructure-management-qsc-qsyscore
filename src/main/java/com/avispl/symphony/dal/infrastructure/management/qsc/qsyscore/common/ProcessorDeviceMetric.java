@@ -30,6 +30,12 @@ public enum ProcessorDeviceMetric {
 	private final String metric;
 	private final String property;
 
+	/**
+	 * Parameterized constructor
+	 *
+	 * @param metric metric that show on UI
+	 * @param property corresponding response field
+	 */
 	ProcessorDeviceMetric(String metric, String property) {
 		this.metric = metric;
 		this.property = property;
