@@ -18,7 +18,7 @@ import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
  * Created on 6/15/2023
  * @since 1.0.0
  */
-public abstract class QSYSPeripheralDevice implements DeviceMonitoring, DeviceControlling {
+public abstract class QSYSPeripheralDevice implements DeviceBehavior {
 	private Map<String, String> stats;
 	private List<AdvancedControllableProperty> advancedControllableProperties;
 	private String name;
