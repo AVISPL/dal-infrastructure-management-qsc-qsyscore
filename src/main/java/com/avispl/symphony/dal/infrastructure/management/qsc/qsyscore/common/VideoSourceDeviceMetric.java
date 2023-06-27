@@ -14,7 +14,7 @@ import java.util.Objects;
  * @since 1.0.0
  */
 public enum VideoSourceDeviceMetric {
-	STATUS("Status","status"),
+	STATUS("Status", "status"),
 	STATUS_LED("StatusLed", "status.led"),
 	HDMI_AV_OUTPUT_5V("HDMIAVOutput5v", "5v"),
 	HDMI_AV_OUTPUT_VALID_FORMAT("HDMIAVOutputValidFormat", "valid.format"),
@@ -26,12 +26,17 @@ public enum VideoSourceDeviceMetric {
 	HDCP_STATUS("HDCP#Status", "hdcp.status"),
 	HDCP_ENCRYPTION("HDCP#Encryption", "hdcp.encrypted"),
 	CHANNEL_PEAK_INPUT_LEVEL("Channel%s#PeakInputLevel(dB)", "channel.%s.digital.input.level"),
-	CHANNEL_VALID("Channel%s#Valid", "channel.%s.valid"),
-	CHANNEL_GAIN_CURRENT_VALUE("Channel%s#GainCurrentValue(dB)", "channel.%s.input.gain");
+	CHANNEL_VALID("Channel%s#Valid", "channel.%s.valid");
 
 	private final String metric;
 	private final String property;
 
+	/**
+	 * Parameterized constructor
+	 *
+	 * @param metric metric that show on UI
+	 * @param property corresponding response field
+	 */
 	VideoSourceDeviceMetric(String metric, String property) {
 		this.metric = metric;
 		this.property = property;
@@ -63,15 +68,17 @@ public enum VideoSourceDeviceMetric {
 	 */
 	public static VideoSourceDeviceMetric getByProperty(String property) {
 		for (VideoSourceDeviceMetric controllingMetric : VideoSourceDeviceMetric.values()) {
-			String[] splitProperty=controllingMetric.property.split("%s");
-			if (splitProperty.length<2){
+			String[] splitProperty = controllingMetric.property.split("%s");
+			if (splitProperty.length < 2) {
 				if (Objects.equals(controllingMetric.getProperty(), property)) {
 					return controllingMetric;
 				}
-			} else
-			{
-				if (property.startsWith(splitProperty[0]) && property.endsWith(splitProperty[splitProperty.length-1])){
+			} else {
+				try {
+					Integer.parseInt(property.replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
 					return controllingMetric;
+				} catch (Exception e) {
+					continue;
 				}
 			}
 		}

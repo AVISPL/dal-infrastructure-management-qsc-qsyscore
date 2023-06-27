@@ -20,6 +20,12 @@ public enum StreamIODeviceMetric {
 	private final String metric;
 	private final String property;
 
+	/**
+	 * Parameterized constructor
+	 *
+	 * @param metric metric that show on UI
+	 * @param property corresponding response field
+	 */
 	StreamIODeviceMetric(String metric, String property) {
 		this.metric = metric;
 		this.property = property;
@@ -51,15 +57,17 @@ public enum StreamIODeviceMetric {
 	 */
 	public static StreamIODeviceMetric getByProperty(String property) {
 		for (StreamIODeviceMetric controllingMetric : StreamIODeviceMetric.values()) {
-			String[] splitProperty=controllingMetric.property.split("%s");
-			if (splitProperty.length<2){
+			String[] splitProperty = controllingMetric.property.split("%s");
+			if (splitProperty.length < 2) {
 				if (Objects.equals(controllingMetric.getProperty(), property)) {
 					return controllingMetric;
 				}
-			} else
-			{
-				if (property.startsWith(splitProperty[0]) && property.endsWith(splitProperty[splitProperty.length-1])){
+			} else {
+				try {
+					Integer.parseInt(property.replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
 					return controllingMetric;
+				} catch (Exception e) {
+					continue;
 				}
 			}
 		}

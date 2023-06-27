@@ -5,7 +5,7 @@
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.rpc;
 
 /**
- * RpcMethod
+ * RpcMethod store all method off QSYS aggregator device
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 6/15/2023
@@ -38,6 +38,10 @@ public enum RpcMethod {
 		return name;
 	}
 
+	/**
+	 * Get request
+	 * @return request
+	 */
 	public static String getRequest() {
 		return "{\n"
 				+ "  \"jsonrpc\": \"2.0\",\n"
@@ -47,6 +51,11 @@ public enum RpcMethod {
 				+ "}\n\00";
 	}
 
+	/**
+	 * Get param of Method
+	 * @param rcpMethod method to get request
+	 * @return param
+	 */
 	public static String getParamsString(RpcMethod rcpMethod) {
 		switch (rcpMethod) {
 			case GET:

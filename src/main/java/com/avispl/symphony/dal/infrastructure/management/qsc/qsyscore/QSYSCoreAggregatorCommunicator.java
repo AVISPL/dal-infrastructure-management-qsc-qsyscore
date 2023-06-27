@@ -376,17 +376,17 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 *
 	 * @return value of {@link #filterDeviceType}
 	 */
-	public String getFilterModelName() {
+	public String getFilterDeviceType() {
 		return filterDeviceType;
 	}
 
 	/**
 	 * Sets {@link #filterDeviceType} value
 	 *
-	 * @param filterModelName new value of {@link #filterDeviceType}
+	 * @param filterDeviceType new value of {@link #filterDeviceType}
 	 */
-	public void setFilterModelName(String filterModelName) {
-		this.filterDeviceType = filterModelName;
+	public void setFilterDeviceType(String filterDeviceType) {
+		this.filterDeviceType = filterDeviceType;
 	}
 
 	/**
@@ -724,17 +724,17 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					stats.put(QSYSCoreMonitoringMetric.HOSTNAME.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getHostname()));
 					if (deviceLANInfo.getData().getInterfaces().size() > 0) {
 						String group = QSYSCoreMonitoringMetric.LAN_A.getName() + QSYSCoreConstant.HASH;
-						stats.put(group + QSYSCoreMonitoringMetric.LAN_A_IP_ADDRESS.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(0).getIpAddress()));
-						stats.put(group + QSYSCoreMonitoringMetric.LAN_A_SUBNET_MASK.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(0).getNetMask()));
-						stats.put(group + QSYSCoreMonitoringMetric.LAN_A_GATEWAY.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(0).getGateway()));
-						stats.put(group + QSYSCoreMonitoringMetric.LAN_A_MAC_ADDRESS.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(0).getMacAddress()));
+						stats.put(group + QSYSCoreMonitoringMetric.IP_ADDRESS.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(0).getIpAddress()));
+						stats.put(group + QSYSCoreMonitoringMetric.SUBNET_MASK.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(0).getNetMask()));
+						stats.put(group + QSYSCoreMonitoringMetric.GATEWAY.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(0).getGateway()));
+						stats.put(group + QSYSCoreMonitoringMetric.MAC_ADDRESS.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(0).getMacAddress()));
 					}
 					if (deviceLANInfo.getData().getInterfaces().size() > 1) {
 						String group = QSYSCoreMonitoringMetric.LAN_B.getName() + QSYSCoreConstant.HASH;
-						stats.put(group + QSYSCoreMonitoringMetric.LAN_B_IP_ADDRESS.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(1).getIpAddress()));
-						stats.put(group + QSYSCoreMonitoringMetric.LAN_B_SUBNET_MASK.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(1).getNetMask()));
-						stats.put(group + QSYSCoreMonitoringMetric.LAN_B_GATEWAY.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(1).getGateway()));
-						stats.put(group + QSYSCoreMonitoringMetric.LAN_B_MAC_ADDRESS.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(1).getMacAddress()));
+						stats.put(group + QSYSCoreMonitoringMetric.IP_ADDRESS.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(1).getIpAddress()));
+						stats.put(group + QSYSCoreMonitoringMetric.SUBNET_MASK.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(1).getNetMask()));
+						stats.put(group + QSYSCoreMonitoringMetric.GATEWAY.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(1).getGateway()));
+						stats.put(group + QSYSCoreMonitoringMetric.MAC_ADDRESS.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(1).getMacAddress()));
 					}
 				}
 			}
@@ -1103,7 +1103,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		try {
 			long milliseconds = Long.parseLong(value);
 			Date date = new Date(milliseconds);
-			SimpleDateFormat dateFormat = new SimpleDateFormat("dd HH:mm:ss");
+			SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 			return dateFormat.format(date);
 		} catch (Exception e) {
 			logger.debug("Error when convert milliseconds to datetime");
@@ -1130,7 +1130,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private void updateFilterDeviceTypeSet() {
 		Set<String> stringSet = convertUserInput(filterDeviceType);
-		filterDeviceTypeSet = Collections.emptySet();
+		filterDeviceTypeSet = new HashSet<>();
 		for (String type : stringSet) {
 			switch (type) {
 				case QSYSCoreConstant.PROCESSOR_TYPE:

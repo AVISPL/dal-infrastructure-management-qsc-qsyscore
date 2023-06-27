@@ -47,10 +47,6 @@ public class DisplayDevice extends QSYSPeripheralDevice {
 								this.getStats().put(groupName + DisplayDeviceMetric.PEAK_INPUT_LEVEL.getMetric(),
 										control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText().replace(QSYSCoreConstant.DB_UNIT, QSYSCoreConstant.EMPTY)
 												: QSYSCoreConstant.DEFAUL_DATA);
-							} else if (splitNamed[2].equals(DisplayDeviceMetric.GAIN_CURRENT_VALUE.getProperty())) {
-								this.getStats().put(groupName + DisplayDeviceMetric.GAIN_CURRENT_VALUE.getMetric(),
-										control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText().replace(QSYSCoreConstant.DB_UNIT, QSYSCoreConstant.EMPTY)
-												: QSYSCoreConstant.DEFAUL_DATA);
 							}
 						}
 					}

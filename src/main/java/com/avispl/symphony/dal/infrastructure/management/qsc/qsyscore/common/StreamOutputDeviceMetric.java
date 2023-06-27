@@ -16,11 +16,16 @@ import java.util.Objects;
 public enum StreamOutputDeviceMetric {
 	CHANNEL_PEAK_INPUT_LEVEL("Channel%s#PeakInputLevel(dB)", "channel.%s.digital.output.level"),
 	STATUS("Status", "output.status"),
-	STATUS_LED("StatusLed", "output.status.led"),
-	CHANNEL_GAIN_CURRENT_VALUE("Channel%s#GainCurrentValue(dB)", "channel.%s.output.gain");
+	STATUS_LED("StatusLed", "output.status.led");
 	private final String metric;
 	private final String property;
 
+	/**
+	 * Parameterized constructor
+	 *
+	 * @param metric metric that show on UI
+	 * @param property corresponding response field
+	 */
 	StreamOutputDeviceMetric(String metric, String property) {
 		this.metric = metric;
 		this.property = property;
@@ -52,15 +57,17 @@ public enum StreamOutputDeviceMetric {
 	 */
 	public static StreamOutputDeviceMetric getByProperty(String property) {
 		for (StreamOutputDeviceMetric controllingMetric : StreamOutputDeviceMetric.values()) {
-			String[] splitProperty=controllingMetric.property.split("%s");
-			if (splitProperty.length<2){
+			String[] splitProperty = controllingMetric.property.split("%s");
+			if (splitProperty.length < 2) {
 				if (Objects.equals(controllingMetric.getProperty(), property)) {
 					return controllingMetric;
 				}
-			} else
-			{
-				if (property.startsWith(splitProperty[0]) && property.endsWith(splitProperty[splitProperty.length-1])){
+			} else {
+				try {
+					Integer.parseInt(property.replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
 					return controllingMetric;
+				} catch (Exception e) {
+					continue;
 				}
 			}
 		}

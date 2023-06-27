@@ -49,7 +49,7 @@ public class StreamInputDevice extends StreamIODevice{
 							control.get(QSYSCoreConstant.CONTROL_NAME).asText().replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
 
 					String value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
-					if (metric==StreamInputDeviceMetric.CHANNEL_GAIN_CURRENT_VALUE || metric==StreamInputDeviceMetric.CHANNEL_PEAK_INPUT_LEVEL)
+					if (metric==StreamInputDeviceMetric.CHANNEL_PEAK_INPUT_LEVEL)
 						value=value.replace(QSYSCoreConstant.DB_UNIT,QSYSCoreConstant.EMPTY);
 
 					this.getStats().put(metricName, value);

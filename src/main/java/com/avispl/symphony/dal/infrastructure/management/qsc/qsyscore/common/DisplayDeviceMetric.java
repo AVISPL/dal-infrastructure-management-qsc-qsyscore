@@ -15,7 +15,7 @@ import java.util.Objects;
  */
 public enum DisplayDeviceMetric {
 	STATUS("Status", "status"),
-	STATUS_LED("Statusled", "status.led"),
+	STATUS_LED("StatusLed", "status.led"),
 	EDID_NAME("EDID#Name", "hdmi.edid.name"),
 	EDID_SERIAL_NUMBER("EDID#SerialNumber", "hdmi.edid.serial.number"),
 	EDID_AUDIO_CHANNELS("EDID#AudioChannels", "hdmi.edid.audio.channels"),
@@ -27,13 +27,17 @@ public enum DisplayDeviceMetric {
 	COLOR_FORMAT_STATUS("ColorFormatStatus", "hdmi.color.format.info"),
 	ASPECT_RATIO_STATUS("AspectRatioStatus", "hdmi.aspect.ratio.info"),
 	CHANNEL("Channel", "channel"),
-	PEAK_INPUT_LEVEL("PeakInputLevel(dB)","digital.output.level"),
-	GAIN_CURRENT_VALUE("GainCurrentValue(dB)","output.gain");
-
+	PEAK_INPUT_LEVEL("PeakInputLevel(dB)","digital.output.level");
 
 	private final String metric;
 	private final String property;
 
+	/**
+	 * Parameterized constructor
+	 *
+	 * @param metric metric that show on UI
+	 * @param property corresponding response field
+	 */
 	DisplayDeviceMetric(String metric, String property) {
 		this.metric = metric;
 		this.property = property;

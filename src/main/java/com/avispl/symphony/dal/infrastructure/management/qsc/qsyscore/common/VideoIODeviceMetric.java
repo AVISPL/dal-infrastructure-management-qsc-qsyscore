@@ -43,6 +43,12 @@ public enum VideoIODeviceMetric {
 	private final String metric;
 	private final String property;
 
+	/**
+	 * Parameterized constructor
+	 *
+	 * @param metric metric that show on UI
+	 * @param property corresponding response field
+	 */
 	VideoIODeviceMetric(String metric, String property) {
 		this.metric = metric;
 		this.property = property;
@@ -74,15 +80,17 @@ public enum VideoIODeviceMetric {
 	 */
 	public static VideoIODeviceMetric getByProperty(String property) {
 		for (VideoIODeviceMetric controllingMetric : VideoIODeviceMetric.values()) {
-			String[] splitProperty=controllingMetric.property.split("%s");
-			if (splitProperty.length<2){
+			String[] splitProperty = controllingMetric.property.split("%s");
+			if (splitProperty.length < 2) {
 				if (Objects.equals(controllingMetric.getProperty(), property)) {
 					return controllingMetric;
 				}
-			} else
-			{
-				if (property.startsWith(splitProperty[0]) && property.endsWith(splitProperty[splitProperty.length-1])){
+			} else {
+				try {
+					Integer.parseInt(property.replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
 					return controllingMetric;
+				} catch (Exception e) {
+					continue;
 				}
 			}
 		}

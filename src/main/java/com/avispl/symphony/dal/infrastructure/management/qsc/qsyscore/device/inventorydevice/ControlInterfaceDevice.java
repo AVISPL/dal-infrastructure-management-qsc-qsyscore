@@ -43,7 +43,6 @@ public class ControlInterfaceDevice extends QSYSPeripheralDevice {
 				}
 				switch (metric) {
 					case MEMORY_USAGE:
-					case SCREEN_BLACKLIGHT_CURRENT_VALUE:
 						this.getStats().put(metric.getMetric(), control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE) ? control.get(QSYSCoreConstant.CONTROL_VALUE).asText() : QSYSCoreConstant.DEFAUL_DATA);
 						break;
 					default:

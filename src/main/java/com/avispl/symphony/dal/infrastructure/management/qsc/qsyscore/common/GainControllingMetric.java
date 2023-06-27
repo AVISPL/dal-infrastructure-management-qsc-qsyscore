@@ -25,10 +25,10 @@ public enum GainControllingMetric {
 	private final String property;
 
 	/**
-	 * QSYSCoreControllingMetric with arg constructor
+	 * Parameterized constructor
 	 *
-	 * @param metric name of the metric
-	 * @param property of control
+	 * @param metric metric that show on UI
+	 * @param property corresponding response field
 	 */
 	GainControllingMetric(String metric, String property) {
 		this.metric = metric;

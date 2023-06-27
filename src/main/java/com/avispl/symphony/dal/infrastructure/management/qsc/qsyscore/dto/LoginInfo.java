@@ -7,7 +7,7 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 
 /**
- * LoginInfo contain  token to login device
+ * LoginInfo contain token to login device
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 6/14/2023
@@ -19,6 +19,11 @@ public class LoginInfo {
 	private long loginDateTime = 0;
 	private String token;
 
+	/**
+	 * Create an instance of LoginInfo
+	 *
+	 * @return instance of LoginInfo
+	 */
 	public static LoginInfo createLoginInfoInstance() {
 		if (loginInfo == null) {
 			loginInfo = new LoginInfo();

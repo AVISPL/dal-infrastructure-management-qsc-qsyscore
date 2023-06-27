@@ -17,12 +17,17 @@ public enum StreamInputDeviceMetric {
 	CHANNEL_PEAK_INPUT_LEVEL("Channel%s#PeakInputLevel(dB)", "channel.%s.digital.input.level"),
 	STATUS("Status", "input.status"),
 	STATUS_LED("StatusLed", "input.status.led"),
-	CHANNEL_SUBCRIPTION_STATUS("Channel%s#SubcriptionStatus", "channel.%s.subscription.status"),
-	CHANNEL_SUBCRIPTION_STATUS_LED("Channel%s#SubcriptionStatusled", "channel.%s.subscription.status.led"),
-	CHANNEL_GAIN_CURRENT_VALUE("Channel%s#GainCurrentValue(dB)", "channel.%s.input.gain");
+	CHANNEL_SUBSCRIPTION_STATUS("Channel%s#SubscriptionStatus", "channel.%s.subscription.status"),
+	CHANNEL_SUBSCRIPTION_STATUS_LED("Channel%s#SubscriptionStatusLed", "channel.%s.subscription.status.led");
 	private final String metric;
 	private final String property;
 
+	/**
+	 * Parameterized constructor
+	 *
+	 * @param metric metric that show on UI
+	 * @param property corresponding response field
+	 */
 	StreamInputDeviceMetric(String metric, String property) {
 		this.metric = metric;
 		this.property = property;
@@ -54,15 +59,17 @@ public enum StreamInputDeviceMetric {
 	 */
 	public static StreamInputDeviceMetric getByProperty(String property) {
 		for (StreamInputDeviceMetric controllingMetric : StreamInputDeviceMetric.values()) {
-			String[] splitProperty=controllingMetric.property.split("%s");
-			if (splitProperty.length<2){
+			String[] splitProperty = controllingMetric.property.split("%s");
+			if (splitProperty.length < 2) {
 				if (Objects.equals(controllingMetric.getProperty(), property)) {
 					return controllingMetric;
 				}
-			} else
-			{
-				if (property.startsWith(splitProperty[0]) && property.endsWith(splitProperty[splitProperty.length-1])){
+			} else {
+				try {
+					Integer.parseInt(property.replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
 					return controllingMetric;
+				} catch (Exception e) {
+					continue;
 				}
 			}
 		}
