@@ -1,9 +1,13 @@
+/*
+ * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ */
+
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
 
 import java.util.Objects;
 
 /**
- * ControlInterfaceDeviceMetric
+ * ControlInterfaceDeviceMetric save all metric fields and corresponding response fields of the Control Interface device
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 6/22/2023
@@ -14,8 +18,8 @@ public enum ControlInterfaceDeviceMetric {
 	STATUS_LED("StatusLed", "status.led"),
 	MEMORY_USAGE("MemoryUsage(%)", "memory.usage"),
 	UCI_CURRENT_UCI("UCICurrentUCI", "current.uci"),
-	SCREEN_TOUCH_ACTIVITY("ScreenTouchActivity", "touched"),
-	SCREEN_BLACKLIGHT_CURRENT_VALUE("ScreenBlacklightcurrentvalue(%)", "screen.brightness");
+	SCREEN_TOUCH_ACTIVITY("ScreenControl#TouchActivity", "touched"),
+	SCREEN_BLACKLIGHT_CURRENT_VALUE("ScreenControl#Blacklightcurrentvalue(%)", "screen.brightness");
 
 	private final String metric;
 	private final String property;

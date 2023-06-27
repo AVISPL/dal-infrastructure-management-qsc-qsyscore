@@ -1,10 +1,14 @@
+/*
+ * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ */
+
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * DeviceInfo
+ * DeviceInfo contail DeviceInfoData
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 6/14/2023

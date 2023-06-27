@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ */
+
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device;
 
 import java.util.ArrayList;
@@ -92,6 +96,9 @@ public abstract class QSYSPeripheralDevice implements DeviceMonitoring, DeviceCo
 		this.id = id;
 	}
 
+	/**
+	 * Create a preripheral device
+	 */
 	public QSYSPeripheralDevice() {
 		stats = new HashMap<>();
 		advancedControllableProperties = new ArrayList<>();

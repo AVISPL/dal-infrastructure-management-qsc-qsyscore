@@ -1,9 +1,13 @@
+/*
+ * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ */
+
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
 
 import java.util.Objects;
 
 /**
- * ProcessorDeviceMetric
+ * ProcessorDeviceMetric save all metric fields and corresponding response fields of the Processor device
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 6/21/2023
@@ -16,7 +20,7 @@ public enum ProcessorDeviceMetric {
 	CLOCK_OFFSET("ClockOffset", "clock.offset"),
 	GRANDMASTER_NAME("GrandmasterName", "grandmaster.name"),
 	PROCESSOR_TEMPERATURE("ProcessorTemperature(C)", "processor.temperature"),
-	FAN_SPEED("FanSpeed", "system.fan.1.speed"),
+	FAN_SPEED("FanSpeed(rpm)", "system.fan.1.speed"),
 	SYSTEM_TEMPERATURE("SystemTemperature(C)", "system.temperature"),
 	PARENT_PORT_NAME("ParentPortName", "parent.port.name"),
 	USB_CONNECTED("USBConnected", "usb.plugged.in"),
