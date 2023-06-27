@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ */
+
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -7,42 +11,52 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSY
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
 
 /**
- * DisplayDevice
+ * DisplayDevice class to implement monitoring and controlling for Display device
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 6/18/2023
  * @since 1.0.0
  */
 public class DisplayDevice extends QSYSPeripheralDevice {
+	/**
+	 * Manage are control of device
+	 *
+	 * @param response String store all information of a control
+	 */
 	@Override
 	public void controlDevice(JsonNode response) {
 
 	}
 
+	/**
+	 * Get all monitoring of device
+	 *
+	 * @param deviceControl list all control of device
+	 */
 	@Override
 	public void monitoringDevice(JsonNode deviceControl) {
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
 				DisplayDeviceMetric metric = DisplayDeviceMetric.getByProperty(control.get(QSYSCoreConstant.CONTROL_NAME).asText());
 				if (metric == null) {
-					if (control.get(QSYSCoreConstant.CONTROL_NAME).asText().startsWith(DisplayDeviceMetric.CHANNEL.getMetric())) {
+					if (control.get(QSYSCoreConstant.CONTROL_NAME).asText().startsWith(DisplayDeviceMetric.CHANNEL.getProperty())) {
 						String[] splitNamed = control.get(QSYSCoreConstant.CONTROL_NAME).asText().split("\\.", 3);
-						String groupName = DisplayDeviceMetric.CHANNEL.getMetric() + splitNamed[1] + QSYSCoreConstant.HASH;
-						if (splitNamed.length >= 3 && splitNamed[2].equals("")) {
-							switch (splitNamed[2]) {
-								case "digital.output.level":
-									this.getStats().put(groupName + "PeakInputLevel(dB)", control.hasNonNull("Value") ? control.get("Value").asText() : "None");
-									break;
-								case "output.gain":
-									this.getStats().put(groupName + "GainCurrentValue(dB)",
-											control.hasNonNull("Value") ? control.get("Value").asText() : "None");
-									break;
+						if (splitNamed.length >= 3 && splitNamed[2].equals(QSYSCoreConstant.EMPTY)) {
+							String groupName = DisplayDeviceMetric.CHANNEL.getMetric() + splitNamed[1] + QSYSCoreConstant.HASH;
+							if (splitNamed[2].equals(DisplayDeviceMetric.PEAK_INPUT_LEVEL.getProperty())) {
+								this.getStats().put(groupName + DisplayDeviceMetric.PEAK_INPUT_LEVEL.getMetric(),
+										control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText().replace(QSYSCoreConstant.DB_UNIT, QSYSCoreConstant.EMPTY)
+												: QSYSCoreConstant.DEFAUL_DATA);
+							} else if (splitNamed[2].equals(DisplayDeviceMetric.GAIN_CURRENT_VALUE.getProperty())) {
+								this.getStats().put(groupName + DisplayDeviceMetric.GAIN_CURRENT_VALUE.getMetric(),
+										control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText().replace(QSYSCoreConstant.DB_UNIT, QSYSCoreConstant.EMPTY)
+												: QSYSCoreConstant.DEFAUL_DATA);
 							}
 						}
 					}
 					continue;
 				}
-				this.getStats().put(metric.getMetric(), control.hasNonNull("String") ? control.get("String").asText() : "None");
+				this.getStats().put(metric.getMetric(), control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA);
 			}
 		}
 	}

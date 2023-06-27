@@ -1,7 +1,11 @@
+/*
+ * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ */
+
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto;
 
 /**
- * QSYSCoreMonitoringMetric
+ * QSYSCoreMonitoringMetric contail all metric of device
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 6/14/2023
@@ -16,11 +20,13 @@ public enum QSYSCoreMonitoringMetric {
 	UPTIME("Uptime"),
 	STATUS("Status"),
 	HOSTNAME("Hostname"),
-	LAN_A_IP_ADDRESS("LAN A"),
+	LAN_A("LAN_A"),
+	LAN_B("LAN_B"),
+	LAN_A_IP_ADDRESS("LANAIPAddress"),
 	LAN_A_SUBNET_MASK("LANASubnetMask"),
 	LAN_A_GATEWAY("LANAGateway"),
 	LAN_A_MAC_ADDRESS("LANAMACAddress"),
-	LAN_B_IP_ADDRESS("LAN B"),
+	LAN_B_IP_ADDRESS("LANBIPAddress"),
 	LAN_B_SUBNET_MASK("LANBSubnetMask"),
 	LAN_B_GATEWAY("LANBGateway"),
 	LAN_B_MAC_ADDRESS("LANBMACAddress"),

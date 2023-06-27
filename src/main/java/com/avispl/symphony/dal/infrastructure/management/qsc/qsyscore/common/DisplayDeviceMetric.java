@@ -1,9 +1,13 @@
+/*
+ * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ */
+
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
 
 import java.util.Objects;
 
 /**
- * DisplayDeviceMetric
+ * DisplayDeviceMetric save all metric fields and corresponding response fields of the Display device
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 6/22/2023
@@ -12,17 +16,20 @@ import java.util.Objects;
 public enum DisplayDeviceMetric {
 	STATUS("Status", "status"),
 	STATUS_LED("Statusled", "status.led"),
-	EDID_NAME("EDIDName", "hdmi.edid.name"),
-	EDID_SERIAL_NUMBER("EDIDSerialNumber", "hdmi.edid.serial.number"),
-	EDID_AUDIO_CHANNELS("EDIDAudioChannels", "hdmi.edid.audio.channels"),
-	HDMI_AV_INPUT_CONNECTED("HDMIAVInputConnected(HPD)", "hdmi.connected.led"),
-	VIDEO_FORMAT_STATUS("VideoFormatStatus", "hdmi.video.format.info"),
-	HDCP_STATUS("HDCPStatus", "hdmi.hdcp.mode.info"),
-	HDMI_DVI_STATUS("HDMI-DVIStatus", "hdmi.output.mode.info"),
-	HDCP_ENCRYPTION("HDCPEncryption", "hdmi.hdcp.encrypted"),
+	EDID_NAME("EDID#Name", "hdmi.edid.name"),
+	EDID_SERIAL_NUMBER("EDID#SerialNumber", "hdmi.edid.serial.number"),
+	EDID_AUDIO_CHANNELS("EDID#AudioChannels", "hdmi.edid.audio.channels"),
+	HDMI_AV_INPUT_CONNECTED("HDMI#Connected(HPD)", "hdmi.connected.led"),
+	VIDEO_FORMAT_STATUS("Video#FormatStatus", "hdmi.video.format.info"),
+	HDCP_STATUS("HDCP#Status", "hdmi.hdcp.mode.info"),
+	HDMI_DVI_STATUS("HDMI#HDMI-DVIStatus", "hdmi.output.mode.info"),
+	HDCP_ENCRYPTION("HDCP#Encryption", "hdmi.hdcp.encrypted"),
 	COLOR_FORMAT_STATUS("ColorFormatStatus", "hdmi.color.format.info"),
 	ASPECT_RATIO_STATUS("AspectRatioStatus", "hdmi.aspect.ratio.info"),
-	CHANNEL("Channel", "");
+	CHANNEL("Channel", "channel"),
+	PEAK_INPUT_LEVEL("PeakInputLevel(dB)","digital.output.level"),
+	GAIN_CURRENT_VALUE("GainCurrentValue(dB)","output.gain");
+
 
 	private final String metric;
 	private final String property;

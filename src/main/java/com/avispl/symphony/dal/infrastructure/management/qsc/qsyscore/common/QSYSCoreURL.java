@@ -1,7 +1,11 @@
+/*
+ * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ */
+
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
 
 /**
- * QSYSCoreURL
+ * QSYSCoreURL provide all url to get data
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 6/14/2023

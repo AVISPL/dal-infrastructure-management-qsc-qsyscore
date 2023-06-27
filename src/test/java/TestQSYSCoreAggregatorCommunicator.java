@@ -1,12 +1,19 @@
+/*
+ * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ */
+
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
+import org.springframework.util.Assert;
+
+import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,22 +22,12 @@ import org.junit.jupiter.api.Test;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
+import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.QSYSCoreAggregatorCommunicator;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.ProcessorDeviceMetric;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreURL;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.ProcessorDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.DesignInfo;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.DesignResult;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.DeviceInfo;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.DeviceInfoData;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.DeviceLANInfo;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.DeviceLANInfoData;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.InterfaceInfo;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.LoginInfo;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreMonitoringMetric;
-import com.avispl.symphony.dal.util.ControllablePropertyFactory;
-import com.avispl.symphony.dal.util.StringUtils;
 
 /**
  * TestQSYSCoreAggregatorCommunicator
@@ -60,38 +57,41 @@ public class TestQSYSCoreAggregatorCommunicator {
 
 	@Test
 	public void testGetMultiplestatictis() throws Exception {
-		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
-		Map<String, String> stats = extendedStatistics.getStatistics();
-		List<AdvancedControllableProperty> advancedControllableProperty=extendedStatistics.getControllableProperties();
-	}
-
-	@Test
-	public void testGetGain() {
-		Map<String, String> stats = new HashMap<>();
-		List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
+		final ExtendedStatistics[] extendedStatistics = new ExtendedStatistics[1];
+		Assertions.assertDoesNotThrow(() -> extendedStatistics[0] = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0));
+		Map<String, String> stats = extendedStatistics[0].getStatistics();
+		Assertions.assertEquals("3-440F59FA6034C59670FF3C0928929607", stats.get(QSYSCoreMonitoringMetric.DEVICE_ID.getName()));
 	}
 
 	@Test
 	public void testControlProperty() throws Exception {
 		ControllableProperty controllableProperty = new ControllableProperty();
-		controllableProperty.setProperty("Gain:ABC#Bypass");
-		controllableProperty.setValue(true);
-		qSYSCoreCommunicator.controlProperty(controllableProperty);
-	}
-
-	@Test
-	public void testGetMonitoringAggregatedDevice() throws Exception {
-		qSYSCoreCommunicator.deviceMap=new TreeMap<>();
-		qSYSCoreCommunicator.deviceMap.put("Status_CeeSalt-Core110f",new ProcessorDevice());
-		qSYSCoreCommunicator.getMultipleStatistics();
+		controllableProperty.setProperty("Gain:ABC#Mute");
+		controllableProperty.setValue(false);
+		Assertions.assertDoesNotThrow(() -> qSYSCoreCommunicator.controlProperty(controllableProperty));
 	}
 
 	@Test
 	public void testRetrieveAggregatorDevice() throws Exception {
-		qSYSCoreCommunicator.getMultipleStatistics();
-		qSYSCoreCommunicator.retrieveMultipleStatistics();
-		TimeUnit.MILLISECONDS.sleep(60000);
-		List<AggregatedDevice> aggregatedDevices=qSYSCoreCommunicator.retrieveMultipleStatistics();
-		System.out.println(aggregatedDevices.size());
+		Assertions.assertDoesNotThrow(() -> {
+			qSYSCoreCommunicator.getMultipleStatistics();
+			qSYSCoreCommunicator.retrieveMultipleStatistics();
+			TimeUnit.MILLISECONDS.sleep(60000);
+			List<AggregatedDevice> aggregatedDevices = qSYSCoreCommunicator.retrieveMultipleStatistics();
+			AggregatedDevice aggregatedDevice = aggregatedDevices.get(0);
+			Assertions.assertNotNull(aggregatedDevice.getDeviceId());
+			Assertions.assertNotNull(aggregatedDevice.getDeviceName());
+			Assertions.assertNotEquals(0, aggregatedDevice.getProperties().size());
+		});
+	}
+
+	@Test
+	public void testFilterGainName() {
+
+	}
+
+	@Test
+	public void testCustom() {
+
 	}
 }

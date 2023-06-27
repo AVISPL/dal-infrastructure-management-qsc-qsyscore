@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ */
+
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto;
 
 import java.util.List;
@@ -5,7 +9,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * ComponentWrapper
+ * ComponentWrapper contail list all componentInfo
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 6/16/2023

@@ -34,7 +34,6 @@ import com.avispl.symphony.dal.communicator.ConnectionStatus;
  * @since 1.0.0
  */
 public class QRCCommunicator extends BaseDevice implements Communicator {
-
 	private static final String ERROR_MESSAGE_CHANGE_PROPERTIES_AFTER_INIT = "Cannot change properties after init() was called";
 	private final ReadWriteLock lock = new ReentrantReadWriteLock();
 	private final ConnectionStatus status = new ConnectionStatus();

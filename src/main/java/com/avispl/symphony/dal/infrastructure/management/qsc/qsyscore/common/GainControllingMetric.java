@@ -1,9 +1,13 @@
+/*
+ * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ */
+
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
 
 import java.util.Objects;
 
 /**
- * GainControllingMetric
+ * GainControllingMetric save all metric fields and corresponding response fields of the gain component
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 6/21/2023
