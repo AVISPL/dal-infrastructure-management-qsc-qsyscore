@@ -3,6 +3,7 @@
  */
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore;
 
+import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.math.IntMath;
 
 import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
@@ -119,6 +121,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					continue mainLoop;
 				}
 
+				localPollingInterval = calculatingLocalPollingInterval();
+				deviceStatisticsCollectionThreads = calculatingThreadQuantity();
+
 				if (nextDeviceId == null) {
 					nextDeviceId = deviceMap.firstKey();
 				}
@@ -139,20 +144,22 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					}
 
 					if (checkLoopRunToDevicesNeedToUpdate) {
-						if (deviceIdsNeedToUpdate.size() < QSYSCoreConstant.MAX_DEVICE_QUANTITY_PER_THREAD) {
-							deviceIdsNeedToUpdate.add(deviceId);
-						} else {
+						deviceIdsNeedToUpdate.add(deviceId);
+						if (deviceIdsNeedToUpdate.size() >= deviceStatisticsCollectionThreads) {
 							List<String> finalDeviceIdsNeedToUpdate = new ArrayList<>(deviceIdsNeedToUpdate);
-							devicesExecutionPool.add(executorService.submit(() -> {
-								retrieveAggregatedDeviceByIdList(finalDeviceIdsNeedToUpdate);
-							}));
+							devicesExecutionPool.add(executorService.submit(() -> retrieveAggregatedDeviceByIdList(finalDeviceIdsNeedToUpdate)));
 							deviceIdsNeedToUpdate.clear();
 							++threadNum;
-							if (threadNum >= QSYSCoreConstant.MAX_THREAD) {
+							if (threadNum >= deviceStatisticsCollectionThreads) {
 								nextDeviceId = null;
 							}
 						}
 					}
+				}
+
+				if (!deviceIdsNeedToUpdate.isEmpty()) {
+					devicesExecutionPool.add(executorService.submit(() -> retrieveAggregatedDeviceByIdList(deviceIdsNeedToUpdate)));
+					nextDeviceId = null;
 				}
 
 				do {
@@ -166,7 +173,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					devicesExecutionPool.removeIf(Future::isDone);
 				} while (!devicesExecutionPool.isEmpty());
 
-				nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + 1000;
+				nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + 30000;
 
 				while (nextDevicesCollectionIterationTimestamp > System.currentTimeMillis()) {
 					try {
@@ -241,6 +248,21 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private static ExecutorService executorService;
 
+	/**
+	 * Polling interval which applied in adapter
+	 */
+	private volatile int localPollingInterval = QSYSCoreConstant.MIN_POLLING_INTERVAL;
+
+	/**
+	 * Number of threads in a thread pool reserved for the device statistics collection
+	 */
+	private volatile int deviceStatisticsCollectionThreads;
+
+	/**
+	 * store pollingInterval adapter properties
+	 */
+	private volatile String pollingInterval;
+
 	private String qrcPort = String.valueOf(QSYSCoreConstant.QRC_PORT);
 	private boolean isEmergencyDelivery = false;
 	private ExtendedStatistics localExtStats;
@@ -278,15 +300,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * Set store all name for filter component
 	 */
 	private Set<String> filterComponentNameSet;
-	/**
-	 * Polling interval which applied in adapter
-	 */
-//	private volatile int localPollingInterval = QSYSCoreConstant.MIN_POLLING_INTERVAL;
-
-	/**
-	 * store pollingInterval adapter properties
-	 */
-//	private volatile String pollingInterval;
 
 	/**
 	 * List save all device
@@ -392,6 +405,24 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	public void setFilterComponentName(String filterComponentName) {
 		this.filterComponentName = filterComponentName;
+	}
+
+	/**
+	 * Retrieves {@link #pollingInterval}
+	 *
+	 * @return value of {@link #pollingInterval}
+	 */
+	public String getPollingInterval() {
+		return pollingInterval;
+	}
+
+	/**
+	 * Sets {@link #pollingInterval} value
+	 *
+	 * @param pollingInterval new value of {@link #pollingInterval}
+	 */
+	public void setPollingInterval(String pollingInterval) {
+		this.pollingInterval = pollingInterval;
 	}
 
 	/**
@@ -1146,5 +1177,54 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			logger.error(String.format("Invalid adapter properties input: %s", e.getMessage()), e);
 		}
 		return Collections.emptySet();
+	}
+
+	/**
+	 * calculating local polling interval
+	 *
+	 * @throws IllegalArgumentException when get limit rate exceed error
+	 */
+	private int calculatingLocalPollingInterval() {
+
+		try {
+			int pollingIntervalValue = QSYSCoreConstant.MIN_POLLING_INTERVAL;
+			if (StringUtils.isNotNullOrEmpty(pollingInterval)) {
+				pollingIntervalValue = Integer.parseInt(pollingInterval);
+			}
+
+			int minPollingInterval = calculatingMinPollingInterval();
+			if (pollingIntervalValue < minPollingInterval) {
+				logger.error(String.format("invalid pollingInterval value, pollingInterval must greater than: %s", minPollingInterval));
+				return minPollingInterval;
+			}
+			return pollingIntervalValue;
+		} catch (Exception e) {
+			throw new IllegalArgumentException(String.format("Unexpected pollingInterval value: %s", pollingInterval), e);
+		}
+	}
+
+	/**
+	 * calculating minimum of polling interval
+	 *
+	 * @return Number of polling interval
+	 */
+	private int calculatingMinPollingInterval() {
+		if (!deviceMap.isEmpty()) {
+			return IntMath.divide(deviceMap.size(), QSYSCoreConstant.MAX_THREAD_QUANTITY * QSYSCoreConstant.MAX_DEVICE_QUANTITY_PER_THREAD, RoundingMode.CEILING);
+		}
+		return QSYSCoreConstant.MIN_POLLING_INTERVAL;
+	}
+
+	/**
+	 * calculating thread quantity
+	 */
+	private int calculatingThreadQuantity() {
+		if (deviceMap.isEmpty()) {
+			return QSYSCoreConstant.MIN_THREAD_QUANTITY;
+		}
+		if (deviceMap.size() / localPollingInterval < QSYSCoreConstant.MAX_THREAD_QUANTITY * QSYSCoreConstant.MAX_DEVICE_QUANTITY_PER_THREAD) {
+			return IntMath.divide(deviceMap.size(), localPollingInterval * QSYSCoreConstant.MAX_DEVICE_QUANTITY_PER_THREAD, RoundingMode.CEILING);
+		}
+		return QSYSCoreConstant.MAX_THREAD_QUANTITY;
 	}
 }
