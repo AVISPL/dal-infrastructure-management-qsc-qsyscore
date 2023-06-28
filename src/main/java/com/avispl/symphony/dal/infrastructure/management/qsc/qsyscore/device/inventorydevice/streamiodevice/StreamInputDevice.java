@@ -35,6 +35,8 @@ public class StreamInputDevice extends StreamIODevice {
 	 */
 	@Override
 	public void monitoringDevice(JsonNode deviceControl) {
+		this.getStats().clear();
+		this.getAdvancedControllableProperties().clear();
 		super.monitoringDevice(deviceControl);
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {

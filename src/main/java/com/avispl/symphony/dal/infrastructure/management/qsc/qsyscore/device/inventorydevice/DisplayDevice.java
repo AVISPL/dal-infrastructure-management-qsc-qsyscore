@@ -36,6 +36,8 @@ public class DisplayDevice extends QSYSPeripheralDevice {
 	 */
 	@Override
 	public void monitoringDevice(JsonNode deviceControl) {
+		this.getStats().clear();
+		this.getAdvancedControllableProperties().clear();
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
 				DisplayDeviceMetric metric = DisplayDeviceMetric.getByProperty(control.get(QSYSCoreConstant.CONTROL_NAME).asText());

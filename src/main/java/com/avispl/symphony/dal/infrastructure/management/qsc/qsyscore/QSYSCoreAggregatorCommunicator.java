@@ -15,8 +15,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -76,195 +78,27 @@ import com.avispl.symphony.dal.util.StringUtils;
  * @since 1.0.0
  */
 public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements Aggregator, Monitorable, Controller {
-	private String abcd;
 
-	/**
-	 * Retrieves {@link #abcd}
-	 *
-	 * @return value of {@link #abcd}
-	 */
-	public String getAbcd() {
-		return abcd;
-	}
-
-	/**
-	 * Sets {@link #abcd} value
-	 *
-	 * @param abcd new value of {@link #abcd}
-	 */
-	public void setAbcd(String abcd) {
-		this.abcd = abcd;
-	}
-
-	/**
-	 * Runner service responsible for collecting data and posting processes to {@link #devicesExecutionPool}
-	 */
-	private QSYSCoreDeviceDataLoader deviceDataLoader;
-
-	/**
-	 * Process is running constantly and triggers collecting data from QSYSCoreDevice API endpoints base on getMultipleStatistic
-	 *
-	 * @author Kevin
-	 * @since 1.0.0
-	 */
-	class QSYSCoreDeviceDataLoader implements Runnable {
-		//		private volatile int threadIndex;
-		private volatile boolean inProgress = true;
+	class DeviceLoader implements Runnable {
+		private volatile List<String> deviceIds;
 
 		/**
-		 * Id of next device to get information
+		 * Parameters constructors
+		 *
+		 * @param deviceIds list all id of device
 		 */
-		private String nextDeviceId = null;
+		public DeviceLoader(List<String> deviceIds) {
+			this.deviceIds = deviceIds;
+		}
 
 		@Override
 		public void run() {
-			mainLoop:
-			while (inProgress) {
-				try {
-					TimeUnit.MILLISECONDS.sleep(500);
-				} catch (InterruptedException e) {
-					// Ignore for now
-				}
 
-				if (!inProgress) {
-					break mainLoop;
-				}
-
-				// next line will determine whether QSYSCore monitoring was paused
-				updateAggregatorStatus();
-				if (devicePaused) {
-					continue mainLoop;
-				}
-
-				int devicesCount = deviceMap.size();
-				if (devicesCount == 0) {
-					continue mainLoop;
-				}
-
-				localPollingInterval = calculatingLocalPollingInterval();
-				deviceStatisticsCollectionThreads = calculatingThreadQuantity();
-
-				if (nextDeviceId != null && !deviceMap.containsKey(nextDeviceId)) {
-					nextDeviceId = deviceMap.ceilingKey(nextDeviceId);
-				}
-
-				if (nextDeviceId == null) {
-					nextDeviceId = deviceMap.firstKey();
-				}
-
-				boolean checkLoopRunToDevicesNeedToUpdate = false;
-
-				List<String> deviceIdsNeedToUpdate = new ArrayList<>();
-				int threadNum = 0;
-
-				for (String deviceId : deviceMap.keySet()) {
-					if (threadNum >= QSYSCoreConstant.MAX_THREAD) {
-						nextDeviceId = deviceId;
-						break;
-					}
-
-					if (deviceId.equals(nextDeviceId)) {
-						checkLoopRunToDevicesNeedToUpdate = true;
-					}
-
-					if (checkLoopRunToDevicesNeedToUpdate) {
-						deviceIdsNeedToUpdate.add(deviceId);
-						if (deviceIdsNeedToUpdate.size() >= deviceStatisticsCollectionThreads) {
-							List<String> finalDeviceIdsNeedToUpdate = new ArrayList<>(deviceIdsNeedToUpdate);
-							devicesExecutionPool.add(executorService.submit(() -> retrieveAggregatedDeviceByIdList(finalDeviceIdsNeedToUpdate)));
-							deviceIdsNeedToUpdate.clear();
-							++threadNum;
-							if (threadNum >= deviceStatisticsCollectionThreads) {
-								nextDeviceId = null;
-							}
-						}
-					}
-				}
-
-				if (!deviceIdsNeedToUpdate.isEmpty()) {
-					devicesExecutionPool.add(executorService.submit(() -> retrieveAggregatedDeviceByIdList(deviceIdsNeedToUpdate)));
-					nextDeviceId = null;
-				}
-
-				do {
-					try {
-						TimeUnit.MILLISECONDS.sleep(500);
-					} catch (InterruptedException e) {
-						if (!inProgress) {
-							break;
-						}
-					}
-					devicesExecutionPool.removeIf(Future::isDone);
-				} while (!devicesExecutionPool.isEmpty());
-
-				nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + 30000;
-
-				while (nextDevicesCollectionIterationTimestamp > System.currentTimeMillis()) {
-					try {
-						TimeUnit.MILLISECONDS.sleep(1000);
-					} catch (InterruptedException e) {
-						//
-					}
-				}
+			if (!deviceMap.isEmpty()) {
+				retrieveAggregatedDeviceByIdList(this.deviceIds);
 			}
-			// Finished collecting
 		}
-
-		/**
-		 * Triggers main loop to stop
-		 */
-		public void stop() {
-			inProgress = false;
-		}
-		// Finished collecting
 	}
-
-	/**
-	 * Update the status of the device.
-	 * The device is considered as paused if did not receive any retrieveMultipleStatistics()
-	 * calls during {@link QSYSCoreAggregatorCommunicator}
-	 */
-	private synchronized void updateAggregatorStatus() {
-		devicePaused = validRetrieveStatisticsTimestamp < System.currentTimeMillis();
-	}
-
-	/**
-	 * Aggregator inactivity timeout. If the {@link QSYSCoreAggregatorCommunicator#retrieveMultipleStatistics()}  method is not
-	 * called during this period of time - device is considered to be paused, thus the Cloud API
-	 * is not supposed to be called
-	 */
-	private static final long retrieveStatisticsTimeOut = 3 * 60 * 1000;
-
-	/**
-	 * Uptime time stamp to valid one
-	 */
-	private synchronized void updateValidRetrieveStatisticsTimestamp() {
-		validRetrieveStatisticsTimestamp = System.currentTimeMillis() + retrieveStatisticsTimeOut;
-		updateAggregatorStatus();
-	}
-
-	/**
-	 * This parameter holds timestamp of when we need to stop performing API calls
-	 * It used when device stop retrieving statistic. Updated each time of called #retrieveMultipleStatistics
-	 */
-	private volatile long validRetrieveStatisticsTimestamp;
-
-	/**
-	 * We don't want the statistics to be collected constantly, because if there's not a big list of devices -
-	 * new devices' statistics loop will be launched before the next monitoring iteration. To avoid that -
-	 * this variable stores a timestamp which validates it, so when the devices' statistics is done collecting, variable
-	 * is set to currentTime + 30s, at the same time, calling {@link #retrieveMultipleStatistics()} and updating the
-	 * {@link #aggregatedDeviceList} resets it to the currentTime timestamp, which will re-activate data collection.
-	 */
-	private long nextDevicesCollectionIterationTimestamp;
-
-	/**
-	 * Indicates whether a device is considered as paused.
-	 * True by default so if the system is rebooted and the actual value is lost -> the device won't start stats
-	 * collection unless the {@link QSYSCoreAggregatorCommunicator#retrieveMultipleStatistics()} method is called which will change it
-	 * to a correct value
-	 */
-	private volatile boolean devicePaused = false;
 
 	/**
 	 * Executor that runs all the async operations, that is posting and
@@ -292,6 +126,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private volatile String pollingInterval;
 
+	/**
+	 * id of next device to get information
+	 */
+	private String nextDeviceId = null;
+
 	private String qrcPort = String.valueOf(QSYSCoreConstant.QRC_PORT);
 	private boolean isEmergencyDelivery = false;
 	private ExtendedStatistics localExtStats;
@@ -309,6 +148,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private Set<String> filterGainNameSet;
 
+	private volatile Queue<String> priorityIdDeivceQueue = new ConcurrentLinkedQueue<>();
+
 	/**
 	 * Filter model by name
 	 */
@@ -319,6 +160,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private Set<String> filterDeviceTypeSet;
 
+	/**
+	 * list all thread
+	 */
+	private List<Future> deviceExecutionPool = new ArrayList<>();
 
 	/**
 	 * Filter component by name
@@ -489,10 +334,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		// This is to make sure if the statistics is being fetched before/after any set of control operations
 		reentrantLock.lock();
 		try {
+
 			Map<String, String> stats = new HashMap<>();
 			List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
-			updateFilterGainNameSet();
-			updateFilterComponentNameSet();
+			filterGainNameSet = convertUserInput(filterGainName);
+			filterComponentNameSet = convertUserInput(filterComponentName);
 			updateFilterDeviceTypeSet();
 
 			if (qrcCommunicator == null) {
@@ -514,16 +360,25 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (isEmergencyDelivery && localExtStat != null) {
 				isEmergencyDelivery = false;
 			} else {
+				//Because there are some threads that keep running when the next getMultiple is called,
+				// so we have to stop all those threads just before the next getMultiple runs
+				if (executorService != null) {
+					for (Future future : deviceExecutionPool) {
+						future.cancel(true);
+					}
+					deviceExecutionPool.clear();
+				}
+
+				int currentSizeDeviceMap = deviceMap.size();
+
 				populateQSYSAggregatorMonitoringData(stats);
 
 				populateQSYSComponent(stats, controllableProperties);
 
-				if (!StringUtils.isNullOrEmpty(abcd)) {
-					stats.put("abc", abcd);
-				} else {
-					stats.put("abc", "1");
-				}
+				localPollingInterval = calculatingLocalPollingInterval();
+				deviceStatisticsCollectionThreads = calculatingThreadQuantity();
 
+				populateAggregatedMonitoringData(currentSizeDeviceMap);
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setControllableProperties(controllableProperties);
 				localExtStats = extendedStatistics;
@@ -574,7 +429,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				case QSYSCoreConstant.GAIN:
 					gainControl(metricName, splitComponent.get(1), value, property);
 			}
-//			TimeUnit.MILLISECONDS.sleep(500);
+			TimeUnit.MILLISECONDS.sleep(500);
 		} finally {
 			reentrantLock.unlock();
 		}
@@ -604,15 +459,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	@Override
 	public List<AggregatedDevice> retrieveMultipleStatistics() throws Exception {
-		if (executorService == null) {
-			// Due to the bug that after changing properties on fly - the adapter is destroyed but adapter is not initialized properly,
-			// so executor service is not running. We need to make sure executorService exists
-			executorService = Executors.newFixedThreadPool(8);
-			executorService.submit(deviceDataLoader = new QSYSCoreDeviceDataLoader());
-		}
-
-		updateValidRetrieveStatisticsTimestamp();
-
 		aggregatedDeviceList.clear();
 		for (Entry<String, QSYSPeripheralDevice> device : deviceMap.entrySet()) {
 			AggregatedDevice aggregatedDevice = new AggregatedDevice();
@@ -628,7 +474,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		if (aggregatedDeviceList.isEmpty()) {
 			return aggregatedDeviceList;
 		}
-//		return cloneAndPopulateAggregatedDeviceList();
+
 		return aggregatedDeviceList;
 	}
 
@@ -691,12 +537,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			logger.debug("Internal destroy is called.");
 		}
 
-		if (deviceDataLoader != null) {
-			deviceDataLoader.stop();
-			deviceDataLoader = null;
-		}
-
 		aggregatedDeviceList.clear();
+		deviceMap.clear();
+
 		if (executorService != null) {
 			executorService.shutdownNow();
 			executorService = null;
@@ -714,9 +557,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		if (logger.isDebugEnabled()) {
 			logger.debug("Internal init is called.");
 		}
-
-		executorService = Executors.newFixedThreadPool(8);
-		executorService.submit(deviceDataLoader = new QSYSCoreDeviceDataLoader());
 	}
 
 	/**
@@ -797,7 +637,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 			}
 		} catch (Exception e) {
-			throw new ResourceNotReachableException("Error when retrieve aggregater network information", e);
+			throw new ResourceNotReachableException("Error when retrieve aggregator network information", e);
 		}
 	}
 
@@ -839,6 +679,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (response.size() > 1) {
 				ComponentWrapper componentWrapper = objectMapper.readValue(response.get(1), ComponentWrapper.class);
 				if (componentWrapper.getResult() != null) {
+
+					//Because some device could be removed, so we need save all existed device
+					Set<String> existDeviceSet = new HashSet<>();
+
 					for (ComponentInfo componentInfo : componentWrapper.getResult()) {
 						if (QSYSCoreConstant.GAIN_TYPE.equals(componentInfo.getType()) && StringUtils.isNotNullOrEmpty(componentInfo.getId())
 								&& (filterGainNameSet.isEmpty() || filterGainNameSet.contains(componentInfo.getId()))) {
@@ -847,13 +691,20 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 							if (componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType())
 									&& (filterDeviceTypeSet.isEmpty() || filterDeviceTypeSet.contains(componentInfo.getType()))
 									&& componentInfo.getId() != null
-									&& (filterComponentNameSet.isEmpty() || filterComponentNameSet.contains(componentInfo.getId()))
-									&& !deviceMap.containsKey(componentInfo.getId())) {
+									&& (filterComponentNameSet.isEmpty() || filterComponentNameSet.contains(componentInfo.getId()))) {
+								existDeviceSet.add(componentInfo.getId());
 								QSYSPeripheralDevice device = createDeviceByType(componentInfo.getType());
-								if (device != null) {
+								if (device != null && !deviceMap.containsKey(componentInfo.getId())) {
 									deviceMap.put(componentInfo.getId(), device);
 								}
 							}
+						}
+					}
+
+					//Remove device does not exist
+					for (String deviceId : deviceMap.keySet()) {
+						if (!existDeviceSet.contains(deviceId)) {
+							deviceMap.remove(deviceId);
 						}
 					}
 				}
@@ -895,8 +746,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * Retrieve gain component
 	 *
 	 * @param stats stats of aggregator
-	 * @param controllableProperties control list of agggregator
-	 * @param deviceId Id of gain component
+	 * @param controllableProperties control list of aggregator
+	 * @param deviceId id of gain component
 	 */
 	private void retrieveGainComponent(Map<String, String> stats, List<AdvancedControllableProperty> controllableProperties, String deviceId) {
 		try {
@@ -1028,8 +879,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	}
 
 	/**
-	 * Convert String to Float or null if can not convert
-	 * Handle null pointer excetion when use this method
+	 * Convert String to Float or null if It can not convert
+	 * Handle null pointer exception when use this method
 	 *
 	 * @param value String value need to convert to float
 	 */
@@ -1037,7 +888,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		try {
 			return Float.parseFloat(value);
 		} catch (NumberFormatException e) {
-			// Handle null pointer excetion when use this method
+			// Handle null pointer exception when use this method
 			return null;
 		}
 	}
@@ -1114,6 +965,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 			} catch (Exception e) {
 				logger.error("Can not retrieve information of aggregated device have id is " + deviceId);
+				priorityIdDeivceQueue.add(deviceId);
 			}
 		}
 	}
@@ -1135,11 +987,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				JsonNode responseControl = objectMapper.readValue(response.get(1), JsonNode.class);
 
 				if ((!responseControl.has(QSYSCoreConstant.RESULT) || !responseControl.get(QSYSCoreConstant.RESULT).asText().equals(QSYSCoreConstant.TRUE)) && this.logger.isDebugEnabled()) {
-					this.logger.debug("Error: cannot set gain value of component " + namedComponent);
+					throw new IllegalStateException("Error: cannot set gain value of component " + namedComponent);
 				}
 			}
 			if (localExtStat != null) {
-
 				updateLocalExtStatDto = new UpdateLocalExtStat(property, value, namedComponent, GainControllingMetric.getByMetric(metricName));
 				isEmergencyDelivery = true;
 			}
@@ -1170,20 +1021,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	}
 
 	/**
-	 * Update filterGainNameSet
-	 */
-	private void updateFilterGainNameSet() {
-		filterGainNameSet = convertUserInput(filterGainName);
-	}
-
-	/**
-	 * Update filterComponentNameSet
-	 */
-	private void updateFilterComponentNameSet() {
-		filterComponentNameSet = convertUserInput(filterComponentName);
-	}
-
-	/**
 	 * Update filterDeviceTypeSet
 	 */
 	private void updateFilterDeviceTypeSet() {
@@ -1210,6 +1047,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				case QSYSCoreConstant.CONTROL_INTERFACE_TYPE:
 					filterDeviceTypeSet.add(QSYSCoreConstant.CONTROL_INTERFACE_DEVICE);
 					break;
+				default:
+					logger.error("Type " + type + " does not exist");
 			}
 		}
 	}
@@ -1217,6 +1056,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * This method is used to handle input from adapter properties and convert it to Set of String for control
 	 *
+	 * @param input input need to convert
 	 * @return Set<String> is the Set of String of filter element
 	 */
 	private Set<String> convertUserInput(String input) {
@@ -1315,5 +1155,79 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		});
 		aggregatedDevice.setDynamicStatistics(dynamicStatistics);
 		aggregatedDevice.setProperties(staticStatistics);
+	}
+
+	/**
+	 * Retrieve information of all device
+	 *
+	 * @param currentSizeDeviceMap Current size of cachedClients List, this param use to check number of clients was change or not
+	 */
+	private void populateAggregatedMonitoringData(int currentSizeDeviceMap) {
+		if (executorService == null || currentSizeDeviceMap != deviceMap.size()) {
+			executorService = Executors.newFixedThreadPool(deviceStatisticsCollectionThreads);
+		}
+
+		if (nextDeviceId != null && !deviceMap.containsKey(nextDeviceId)) {
+			nextDeviceId = deviceMap.ceilingKey(nextDeviceId);
+		}
+
+		if (nextDeviceId == null) {
+			nextDeviceId = deviceMap.firstKey();
+		}
+
+		boolean checkLoopRunToDevicesNeedToUpdate = false;
+
+		List<String> deviceIdsNeedToUpdate = new ArrayList<>();
+		int threadNum = 0;
+
+		while (!priorityIdDeivceQueue.isEmpty() && threadNum < deviceStatisticsCollectionThreads) {
+			deviceIdsNeedToUpdate.add(priorityIdDeivceQueue.poll());
+			if (deviceIdsNeedToUpdate.size() >= deviceStatisticsCollectionThreads) {
+				List<String> finalDeviceIdsNeedToUpdate = new ArrayList<>(deviceIdsNeedToUpdate);
+
+				Future future = executorService.submit(new DeviceLoader(finalDeviceIdsNeedToUpdate));
+				deviceExecutionPool.add(future);
+
+				deviceIdsNeedToUpdate.clear();
+				++threadNum;
+			}
+		}
+
+		for (String deviceId : deviceMap.keySet()) {
+			if (threadNum >= QSYSCoreConstant.MAX_THREAD) {
+				nextDeviceId = deviceId;
+				break;
+			}
+
+			if (deviceId.equals(nextDeviceId)) {
+				checkLoopRunToDevicesNeedToUpdate = true;
+			}
+
+			if (checkLoopRunToDevicesNeedToUpdate) {
+				deviceIdsNeedToUpdate.add(deviceId);
+				if (deviceIdsNeedToUpdate.size() >= deviceStatisticsCollectionThreads) {
+					List<String> finalDeviceIdsNeedToUpdate = new ArrayList<>(deviceIdsNeedToUpdate);
+
+					Future future = executorService.submit(new DeviceLoader(finalDeviceIdsNeedToUpdate));
+					deviceExecutionPool.add(future);
+
+					deviceIdsNeedToUpdate.clear();
+					++threadNum;
+					if (threadNum >= deviceStatisticsCollectionThreads) {
+						nextDeviceId = null;
+					}
+				}
+			}
+		}
+
+		if (!deviceIdsNeedToUpdate.isEmpty()) {
+			List<String> finalDeviceIdsNeedToUpdate = new ArrayList<>(deviceIdsNeedToUpdate);
+
+			Future future = executorService.submit(new DeviceLoader(finalDeviceIdsNeedToUpdate));
+			deviceExecutionPool.add(future);
+
+			deviceIdsNeedToUpdate.clear();
+			nextDeviceId = null;
+		}
 	}
 }

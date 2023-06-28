@@ -36,6 +36,8 @@ public class VideoIODevice extends QSYSPeripheralDevice {
 	 */
 	@Override
 	public void monitoringDevice(JsonNode deviceControl) {
+		this.getStats().clear();
+		this.getAdvancedControllableProperties().clear();
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
 				VideoIODeviceMetric metric = VideoIODeviceMetric.getByProperty(control.get(QSYSCoreConstant.CONTROL_NAME).asText());
@@ -48,11 +50,26 @@ public class VideoIODevice extends QSYSPeripheralDevice {
 				if (splitProperty.length > 1) {
 					String metricName = String.format(metric.getMetric(),
 							control.get(QSYSCoreConstant.CONTROL_NAME).asText().replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
-					String value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
-					this.getStats().put(metricName, StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
+					String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
+					this.getStats().put(metricName, StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 				} else {
-					String value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
-					this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
+					String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
+					switch (metric) {
+						case CPU_TEMPERATURE:
+						case IO_TEMPERATURE:
+						case VPU_TEMPERATURE:
+							value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE) ? control.get(QSYSCoreConstant.CONTROL_VALUE).asText() : QSYSCoreConstant.DEFAUL_DATA;
+							Float floatValue = 0F;
+							try {
+								floatValue = Float.parseFloat(value);
+								floatValue = ((float) Math.ceil(floatValue * 100)) / 100;
+								value = String.valueOf(floatValue);
+							} catch (Exception e) {
+								continue;
+							}
+							break;
+					}
+					this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 				}
 			}
 		}
