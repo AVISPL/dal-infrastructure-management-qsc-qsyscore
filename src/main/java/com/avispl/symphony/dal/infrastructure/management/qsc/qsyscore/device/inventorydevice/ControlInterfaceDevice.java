@@ -36,6 +36,8 @@ public class ControlInterfaceDevice extends QSYSPeripheralDevice {
 	 */
 	@Override
 	public void monitoringDevice(JsonNode deviceControl) {
+		this.getStats().clear();
+		this.getAdvancedControllableProperties().clear();
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
 				ControlInterfaceDeviceMetric metric = ControlInterfaceDeviceMetric.getByProperty(control.get(QSYSCoreConstant.CONTROL_NAME).asText());
@@ -46,6 +48,13 @@ public class ControlInterfaceDevice extends QSYSPeripheralDevice {
 				switch (metric) {
 					case MEMORY_USAGE:
 						value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE) ? control.get(QSYSCoreConstant.CONTROL_VALUE).asText() : QSYSCoreConstant.DEFAUL_DATA;
+						try{
+							Float floatValue=Float.parseFloat(value);
+							floatValue = ((float) Math.ceil(floatValue * 100)) / 100;
+							value = String.valueOf(floatValue);
+						} catch (Exception e){
+							break;
+						}
 						break;
 					default:
 						value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;

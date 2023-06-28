@@ -36,6 +36,8 @@ public class VideoSourceDevice extends QSYSPeripheralDevice {
 	 */
 	@Override
 	public void monitoringDevice(JsonNode deviceControl) {
+		this.getStats().clear();
+		this.getAdvancedControllableProperties().clear();
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
 				VideoSourceDeviceMetric metric = VideoSourceDeviceMetric.getByProperty(control.get(QSYSCoreConstant.CONTROL_NAME).asText());
