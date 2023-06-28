@@ -64,6 +64,7 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.LoginI
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreMonitoringMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.UpdateLocalExtStat;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.rpc.RpcMethod;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.statistics.DynamicStatisticsDefinitions;
 import com.avispl.symphony.dal.util.ControllablePropertyFactory;
 import com.avispl.symphony.dal.util.StringUtils;
 
@@ -75,6 +76,25 @@ import com.avispl.symphony.dal.util.StringUtils;
  * @since 1.0.0
  */
 public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements Aggregator, Monitorable, Controller {
+	private String abcd;
+
+	/**
+	 * Retrieves {@link #abcd}
+	 *
+	 * @return value of {@link #abcd}
+	 */
+	public String getAbcd() {
+		return abcd;
+	}
+
+	/**
+	 * Sets {@link #abcd} value
+	 *
+	 * @param abcd new value of {@link #abcd}
+	 */
+	public void setAbcd(String abcd) {
+		this.abcd = abcd;
+	}
 
 	/**
 	 * Runner service responsible for collecting data and posting processes to {@link #devicesExecutionPool}
@@ -123,6 +143,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 				localPollingInterval = calculatingLocalPollingInterval();
 				deviceStatisticsCollectionThreads = calculatingThreadQuantity();
+
+				if (nextDeviceId != null && !deviceMap.containsKey(nextDeviceId)) {
+					nextDeviceId = deviceMap.ceilingKey(nextDeviceId);
+				}
 
 				if (nextDeviceId == null) {
 					nextDeviceId = deviceMap.firstKey();
@@ -249,6 +273,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private static ExecutorService executorService;
 
 	/**
+	 * Configurable property for historical properties, comma separated values kept as set locally
+	 */
+	private Set<String> historicalProperties = new HashSet<>();
+
+	/**
 	 * Polling interval which applied in adapter
 	 */
 	private volatile int localPollingInterval = QSYSCoreConstant.MIN_POLLING_INTERVAL;
@@ -334,6 +363,28 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * List of aggregated device
 	 */
 	private List<AggregatedDevice> aggregatedDeviceList = Collections.synchronizedList(new ArrayList<>());
+
+
+	/**
+	 * Retrieves {@link #historicalProperties}
+	 *
+	 * @return value of {@link #historicalProperties}
+	 */
+	public String getHistoricalProperties() {
+		return String.join(",", this.historicalProperties);
+	}
+
+	/**
+	 * Sets {@link #historicalProperties} value
+	 *
+	 * @param historicalProperties new value of {@link #historicalProperties}
+	 */
+	public void setHistoricalProperties(String historicalProperties) {
+		this.historicalProperties.clear();
+		Arrays.asList(historicalProperties.split(",")).forEach(propertyName -> {
+			this.historicalProperties.add(propertyName.trim());
+		});
+	}
 
 	/**
 	 * Retrieves {@link #qrcPort}
@@ -467,6 +518,12 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 				populateQSYSComponent(stats, controllableProperties);
 
+				if (!StringUtils.isNullOrEmpty(abcd)) {
+					stats.put("abc", abcd);
+				} else {
+					stats.put("abc", "1");
+				}
+
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setControllableProperties(controllableProperties);
 				localExtStats = extendedStatistics;
@@ -517,7 +574,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				case QSYSCoreConstant.GAIN:
 					gainControl(metricName, splitComponent.get(1), value, property);
 			}
-			TimeUnit.MILLISECONDS.sleep(1000);
+//			TimeUnit.MILLISECONDS.sleep(500);
 		} finally {
 			reentrantLock.unlock();
 		}
@@ -563,6 +620,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			aggregatedDevice.setDeviceOnline(true);
 			aggregatedDevice.setDeviceName(device.getKey());
 			aggregatedDevice.setProperties(device.getValue().getStats());
+			provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
 			aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
 			aggregatedDeviceList.add(aggregatedDevice);
 		}
@@ -853,7 +911,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					JsonNode deviceControls = deviceControlInfo.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS);
 					for (JsonNode control : deviceControls) {
 						if (GainControllingMetric.BYPASS_CONTROL.getProperty().equals(control.get(QSYSCoreConstant.CONTROL_NAME).asText())) {
-							stats.put(groupName + QSYSCoreConstant.HASH + GainControllingMetric.BYPASS_CONTROL.getMetric(), "");
+							stats.put(groupName + QSYSCoreConstant.HASH + GainControllingMetric.BYPASS_CONTROL.getMetric(), QSYSCoreConstant.EMPTY);
 							controllableProperties.add(ControllablePropertyFactory.createSwitch(groupName + QSYSCoreConstant.HASH + GainControllingMetric.BYPASS_CONTROL.getMetric(),
 									QSYSCoreConstant.FALSE.equals(control.get(QSYSCoreConstant.CONTROL_VALUE).asText()) ? 0 : 1));
 						} else if (GainControllingMetric.GAIN_VALUE_CONTROL.getProperty().equals(control.get(QSYSCoreConstant.CONTROL_NAME).asText())) {
@@ -881,11 +939,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 								}
 							}
 						} else if (GainControllingMetric.INVERT_CONTROL.getProperty().equals(control.get(QSYSCoreConstant.CONTROL_NAME).asText())) {
-							stats.put(groupName + QSYSCoreConstant.HASH + GainControllingMetric.INVERT_CONTROL.getMetric(), "");
+							stats.put(groupName + QSYSCoreConstant.HASH + GainControllingMetric.INVERT_CONTROL.getMetric(), QSYSCoreConstant.EMPTY);
 							controllableProperties.add(ControllablePropertyFactory.createSwitch(groupName + QSYSCoreConstant.HASH + GainControllingMetric.INVERT_CONTROL.getMetric(),
 									QSYSCoreConstant.FALSE.equals(control.get(QSYSCoreConstant.CONTROL_VALUE).asText()) ? 0 : 1));
 						} else if (GainControllingMetric.MUTE_CONTROL.getProperty().equals(control.get(QSYSCoreConstant.CONTROL_NAME).asText())) {
-							stats.put(groupName + QSYSCoreConstant.HASH + GainControllingMetric.MUTE_CONTROL.getMetric(), "");
+							stats.put(groupName + QSYSCoreConstant.HASH + GainControllingMetric.MUTE_CONTROL.getMetric(), QSYSCoreConstant.EMPTY);
 							controllableProperties.add(ControllablePropertyFactory.createSwitch(groupName + QSYSCoreConstant.HASH + GainControllingMetric.MUTE_CONTROL.getMetric(),
 									QSYSCoreConstant.FALSE.equals(control.get(QSYSCoreConstant.CONTROL_VALUE).asText()) ? 0 : 1));
 						}
@@ -961,7 +1019,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		}
 
 		// Gain or Mute
-		localExtStat.getStatistics().put(updateLocalExtStatDto.getProperty(), "");
+		localExtStat.getStatistics().put(updateLocalExtStatDto.getProperty(), QSYSCoreConstant.EMPTY);
 
 		float finalValue = value;
 		localExtStat.getControllableProperties().stream()
@@ -1226,5 +1284,36 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			return IntMath.divide(deviceMap.size(), localPollingInterval * QSYSCoreConstant.MAX_DEVICE_QUANTITY_PER_THREAD, RoundingMode.CEILING);
 		}
 		return QSYSCoreConstant.MAX_THREAD_QUANTITY;
+	}
+
+	/**
+	 * Add a property as a regular statistics property, or as dynamic one, based on the {@link #historicalProperties} configuration
+	 * and DynamicStatisticsDefinitions static definitions.
+	 *
+	 * @param statistics map of all device properties
+	 * @param aggregatedDevice device statistics object
+	 */
+	private void provisionTypedStatistics(Map<String, String> statistics, AggregatedDevice aggregatedDevice) {
+		Map<String, String> dynamicStatistics = new HashMap<>();
+		Map<String, String> staticStatistics = new HashMap<>();
+		statistics.forEach((propertyName, propertyValue) -> {
+			// To ignore the group properties are in, we need to split it
+			// whenever there's a hash involved and take the 2nd part
+			boolean propertyListed = false;
+			if (!historicalProperties.isEmpty()) {
+				if (propertyName.contains(QSYSCoreConstant.HASH)) {
+					propertyListed = historicalProperties.contains(propertyName.split(QSYSCoreConstant.HASH)[1]);
+				} else {
+					propertyListed = historicalProperties.contains(propertyName);
+				}
+			}
+			if (propertyListed && DynamicStatisticsDefinitions.checkIfExists(propertyName)) {
+				dynamicStatistics.put(propertyName, propertyValue);
+			} else {
+				staticStatistics.put(propertyName, propertyValue);
+			}
+		});
+		aggregatedDevice.setDynamicStatistics(dynamicStatistics);
+		aggregatedDevice.setProperties(staticStatistics);
 	}
 }

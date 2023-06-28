@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.StreamIODeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
+import com.avispl.symphony.dal.util.StringUtils;
 
 /**
  * StreamIODevice class to implement monitoring and controlling for Stream IO device
@@ -31,7 +32,8 @@ public abstract class StreamIODevice extends QSYSPeripheralDevice {
 				if (metric == null) {
 					continue;
 				}
-				this.getStats().put(metric.getMetric(), control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA);
+				String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
+				this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 			}
 		}
 	}

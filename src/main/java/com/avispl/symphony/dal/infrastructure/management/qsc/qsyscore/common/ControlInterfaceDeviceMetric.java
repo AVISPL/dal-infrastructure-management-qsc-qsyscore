@@ -17,7 +17,7 @@ public enum ControlInterfaceDeviceMetric {
 	STATUS("Status", "status"),
 	STATUS_LED("StatusLed", "status.led"),
 	MEMORY_USAGE("MemoryUsage(%)", "memory.usage"),
-	UCI_CURRENT_UCI("UCICurrentUCI", "current.uci"),
+	UCI_CURRENT_UCI("UCICurrentName", "current.uci"),
 	SCREEN_TOUCH_ACTIVITY("ScreenControl#TouchActivity", "touched");
 
 	private final String metric;
