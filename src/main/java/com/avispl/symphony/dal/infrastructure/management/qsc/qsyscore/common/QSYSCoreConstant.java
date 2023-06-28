@@ -56,10 +56,10 @@ public class QSYSCoreConstant {
 	public static final long TIMEOUT = 55;
 
 	// Thread metric
-	public static final int MAX_THREAD = 3;
-	public static final int MAX_THREAD_QUANTITY = 3;
+	public static final int MAX_THREAD = 8;
+	public static final int MAX_THREAD_QUANTITY = 8;
 	public static final int MIN_THREAD_QUANTITY = 1;
-	public static final int MAX_DEVICE_QUANTITY_PER_THREAD = 2; //60
+	public static final int MAX_DEVICE_QUANTITY_PER_THREAD = 60;
 	public static final int MIN_POLLING_INTERVAL = 1;
 
 	//Control response
