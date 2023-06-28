@@ -1012,8 +1012,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		try {
 			long milliseconds = Long.parseLong(value);
 			Date date = new Date(milliseconds);
-			SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
-			return dateFormat.format(date);
+			SimpleDateFormat dateFormat = new SimpleDateFormat("dd : hh : mm : ss :");
+			return dateFormat.format(date).replaceFirst(QSYSCoreConstant.COLON, QSYSCoreConstant.DAYS)
+					.replaceFirst(QSYSCoreConstant.COLON, QSYSCoreConstant.HOURS).replaceFirst(QSYSCoreConstant.COLON, QSYSCoreConstant.MINUTES)
+					.replaceFirst(QSYSCoreConstant.COLON, QSYSCoreConstant.SECONDS);
 		} catch (Exception e) {
 			logger.debug("Error when convert milliseconds to datetime");
 		}
