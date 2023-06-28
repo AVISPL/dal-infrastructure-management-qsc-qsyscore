@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.ControlInterfaceDeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
+import com.avispl.symphony.dal.util.StringUtils;
 
 /**
  * ControlInterfaceDevice class to implement monitoring and controlling for Control Interface device
@@ -41,15 +42,16 @@ public class ControlInterfaceDevice extends QSYSPeripheralDevice {
 				if (metric == null) {
 					continue;
 				}
+				String value;
 				switch (metric) {
 					case MEMORY_USAGE:
-						this.getStats().put(metric.getMetric(), control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE) ? control.get(QSYSCoreConstant.CONTROL_VALUE).asText() : QSYSCoreConstant.DEFAUL_DATA);
+						value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE) ? control.get(QSYSCoreConstant.CONTROL_VALUE).asText() : QSYSCoreConstant.DEFAUL_DATA;
 						break;
 					default:
-						this.getStats()
-								.put(metric.getMetric(), control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA);
+						value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
 						break;
 				}
+				this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
 			}
 		}
 	}

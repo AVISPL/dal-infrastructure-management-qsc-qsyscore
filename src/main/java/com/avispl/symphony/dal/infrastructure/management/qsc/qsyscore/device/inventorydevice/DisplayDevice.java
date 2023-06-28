@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.DisplayDeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
+import com.avispl.symphony.dal.util.StringUtils;
 
 /**
  * DisplayDevice class to implement monitoring and controlling for Display device
@@ -41,18 +42,22 @@ public class DisplayDevice extends QSYSPeripheralDevice {
 				if (metric == null) {
 					if (control.get(QSYSCoreConstant.CONTROL_NAME).asText().startsWith(DisplayDeviceMetric.CHANNEL.getProperty())) {
 						String[] splitNamed = control.get(QSYSCoreConstant.CONTROL_NAME).asText().split("\\.", 3);
+
 						if (splitNamed.length >= 3 && splitNamed[2].equals(QSYSCoreConstant.EMPTY)) {
 							String groupName = DisplayDeviceMetric.CHANNEL.getMetric() + splitNamed[1] + QSYSCoreConstant.HASH;
+
 							if (splitNamed[2].equals(DisplayDeviceMetric.PEAK_INPUT_LEVEL.getProperty())) {
-								this.getStats().put(groupName + DisplayDeviceMetric.PEAK_INPUT_LEVEL.getMetric(),
-										control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText().replace(QSYSCoreConstant.DB_UNIT, QSYSCoreConstant.EMPTY)
-												: QSYSCoreConstant.DEFAUL_DATA);
+								String value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText().replace(QSYSCoreConstant.DB_UNIT, QSYSCoreConstant.EMPTY)
+										: QSYSCoreConstant.DEFAUL_DATA;
+
+								this.getStats().put(groupName + DisplayDeviceMetric.PEAK_INPUT_LEVEL.getMetric(), StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
 							}
 						}
 					}
 					continue;
 				}
-				this.getStats().put(metric.getMetric(), control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA);
+				String value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
+				this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
 			}
 		}
 	}

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.ProcessorDeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
+import com.avispl.symphony.dal.util.StringUtils;
 
 /**
  * ProcessorDevice class to implement monitoring and controlling for Processor device
@@ -41,14 +42,16 @@ public class ProcessorDevice extends QSYSPeripheralDevice {
 				if (processor == null) {
 					continue;
 				}
+				String value;
 				switch (processor) {
 					case PROCESSOR_TEMPERATURE:
 					case SYSTEM_TEMPERATURE:
-						this.getStats().put(processor.getMetric(), control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE) ? control.get(QSYSCoreConstant.CONTROL_VALUE).asText() : QSYSCoreConstant.DEFAUL_DATA);
+						value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE) ? control.get(QSYSCoreConstant.CONTROL_VALUE).asText() : QSYSCoreConstant.DEFAUL_DATA;
 						break;
 					default:
-						this.getStats().put(processor.getMetric(), control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA);
-				}
+						value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
+					}
+				this.getStats().put(processor.getMetric(), StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
 			}
 		}
 	}
