@@ -121,7 +121,5 @@ public class TestQSYSCoreAggregatorCommunicator {
 
 	@Test
 	public void testCustom() {
-		float a= 2.225F;
-		System.out.println(String.format("%.2f",a));
 	}
 }

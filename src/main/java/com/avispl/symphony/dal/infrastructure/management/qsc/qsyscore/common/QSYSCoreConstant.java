@@ -74,11 +74,16 @@ public class QSYSCoreConstant {
 	public static final String CONTROL_VALUE_STRING = "String";
 
 	// Device Type
-	public static final String PROCESSOR_TYPE="Processor";
-	public static final String DISPLAY_TYPE="Display";
-	public static final String STREAM_IO_TYPE="Streaming I/O";
-	public static final String VIDEO_IO_TYPE="Video I/O";
-	public static final String VIDEO_SOURCE_TYPE="Video Source";
-	public static final String CONTROL_INTERFACE_TYPE="Control Interface";
+	public static final String PROCESSOR_TYPE = "Processor";
+	public static final String DISPLAY_TYPE = "Display";
+	public static final String STREAM_IO_TYPE = "Streaming I/O";
+	public static final String VIDEO_IO_TYPE = "Video I/O";
+	public static final String VIDEO_SOURCE_TYPE = "Video Source";
+	public static final String CONTROL_INTERFACE_TYPE = "Control Interface";
 
+	//Date time
+	public static final String DAYS = "day(s)";
+	public static final String HOURS = "hour(s)";
+	public static final String MINUTES = "minute(s)";
+	public static final String SECONDS = "second(s)";
 }
