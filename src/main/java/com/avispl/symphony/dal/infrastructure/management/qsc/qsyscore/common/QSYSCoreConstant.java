@@ -56,7 +56,6 @@ public class QSYSCoreConstant {
 	public static final long TIMEOUT = 55;
 
 	// Thread metric
-	public static final int MAX_THREAD = 8;
 	public static final int MAX_THREAD_QUANTITY = 8;
 	public static final int MIN_THREAD_QUANTITY = 1;
 	public static final int MAX_DEVICE_QUANTITY_PER_THREAD = 60;
@@ -86,4 +85,6 @@ public class QSYSCoreConstant {
 	public static final String HOURS = "hour(s)";
 	public static final String MINUTES = "minute(s)";
 	public static final String SECONDS = "second(s)";
+
+	public static final Integer MAX_ERROR_COUNT = 2;
 }

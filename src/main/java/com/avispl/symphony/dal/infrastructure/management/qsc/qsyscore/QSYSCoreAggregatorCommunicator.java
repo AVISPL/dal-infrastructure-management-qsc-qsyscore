@@ -5,20 +5,20 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore;
 
 import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -114,7 +114,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * Polling interval which applied in adapter
 	 */
-	private volatile int localPollingInterval = QSYSCoreConstant.MIN_POLLING_INTERVAL;
+	private volatile int localPollingInterval = 0;
 
 	/**
 	 * Number of threads in a thread pool reserved for the device statistics collection
@@ -125,11 +125,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * store pollingInterval adapter properties
 	 */
 	private volatile String pollingInterval;
-
-	/**
-	 * id of next device to get information
-	 */
-	private String nextDeviceId = null;
 
 	private String qrcPort = String.valueOf(QSYSCoreConstant.QRC_PORT);
 	private boolean isEmergencyDelivery = false;
@@ -148,7 +143,16 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private Set<String> filterGainNameSet;
 
-	private volatile Queue<String> priorityIdDeivceQueue = new ConcurrentLinkedQueue<>();
+	/**
+	 * Map store and update all device can not get information
+	 */
+	private volatile Map<String, Integer> errorDeviceMap = new HashMap<>();
+
+	/**
+	 * Stack store all error device id to loop throughout it
+	 */
+	private Deque<String> deviceIdDequeue = new ArrayDeque<>();
+
 
 	/**
 	 * Filter model by name
@@ -375,10 +379,24 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 				populateQSYSComponent(stats, controllableProperties);
 
-				localPollingInterval = calculatingLocalPollingInterval();
-				deviceStatisticsCollectionThreads = calculatingThreadQuantity();
+				if (localPollingInterval == 0) {
+					localPollingInterval = QSYSCoreConstant.MIN_POLLING_INTERVAL;
+					localPollingInterval = calculatingLocalPollingInterval();
+					deviceStatisticsCollectionThreads = calculatingThreadQuantity();
+
+					for (String deviceId : errorDeviceMap.keySet()) {
+						deviceIdDequeue.addLast(deviceId);
+					}
+
+					for (String deviceId : deviceMap.keySet()) {
+						if (!errorDeviceMap.containsKey(deviceId)) {
+							deviceIdDequeue.addLast(deviceId);
+						}
+					}
+				}
 
 				populateAggregatedMonitoringData(currentSizeDeviceMap);
+
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setControllableProperties(controllableProperties);
 				localExtStats = extendedStatistics;
@@ -687,8 +705,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						if (QSYSCoreConstant.GAIN_TYPE.equals(componentInfo.getType()) && StringUtils.isNotNullOrEmpty(componentInfo.getId())
 								&& (filterGainNameSet.isEmpty() || filterGainNameSet.contains(componentInfo.getId()))) {
 							retrieveGainComponent(stats, controllableProperties, componentInfo.getId());
-						} else {
-							if (componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType())
+						} else{
+							if (localPollingInterval == 0 && componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType())
 									&& (filterDeviceTypeSet.isEmpty() || filterDeviceTypeSet.contains(componentInfo.getType()))
 									&& componentInfo.getId() != null
 									&& (filterComponentNameSet.isEmpty() || filterComponentNameSet.contains(componentInfo.getId()))) {
@@ -702,9 +720,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					}
 
 					//Remove device does not exist
-					for (String deviceId : deviceMap.keySet()) {
-						if (!existDeviceSet.contains(deviceId)) {
-							deviceMap.remove(deviceId);
+					if (localPollingInterval == 0) {
+						for (String deviceId : deviceMap.keySet()) {
+							if (!existDeviceSet.contains(deviceId)) {
+								deviceMap.remove(deviceId);
+							}
 						}
 					}
 				}
@@ -836,7 +856,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 							break;
 						case GAIN_VALUE_CONTROL:
 							value = Float.parseFloat(jsonValue.get(QSYSCoreConstant.CONTROL_VALUE).asText());
-							value = (float) ((float) Math.ceil(value * 100)) / 100;
+							value = ((float) Math.ceil(value * 100)) / 100;
 							stringValue = String.valueOf(value);
 							String[] splitString = stringValue.split(QSYSCoreConstant.DOT);
 							if (splitString.length == 1) {
@@ -903,7 +923,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		ObjectNode request = JsonNodeFactory.instance.objectNode();
 		request.put(QSYSCoreConstant.USERNAME, login);
 		request.put(QSYSCoreConstant.PASSWORD, password);
-
 		try {
 			if (this.loginInfo.isTimeout() || this.loginInfo.getToken() == null) {
 				JsonNode responseData = doPost(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.TOKEN), request, JsonNode.class);
@@ -963,9 +982,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					JsonNode deviceControlResponse = objectMapper.readValue(response.get(1), JsonNode.class);
 					deviceMap.get(deviceId).monitoringDevice(deviceControlResponse);
 				}
+				errorDeviceMap.remove(deviceId);
 			} catch (Exception e) {
 				logger.error("Can not retrieve information of aggregated device have id is " + deviceId);
-				priorityIdDeivceQueue.add(deviceId);
+
 			}
 		}
 	}
@@ -1169,22 +1189,32 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			executorService = Executors.newFixedThreadPool(deviceStatisticsCollectionThreads);
 		}
 
-		if (nextDeviceId != null && !deviceMap.containsKey(nextDeviceId)) {
-			nextDeviceId = deviceMap.ceilingKey(nextDeviceId);
-		}
-
-		if (nextDeviceId == null) {
-			nextDeviceId = deviceMap.firstKey();
-		}
-
-		boolean checkLoopRunToDevicesNeedToUpdate = false;
-
 		List<String> deviceIdsNeedToUpdate = new ArrayList<>();
 		int threadNum = 0;
 
-		while (!priorityIdDeivceQueue.isEmpty() && threadNum < deviceStatisticsCollectionThreads) {
-			deviceIdsNeedToUpdate.add(priorityIdDeivceQueue.poll());
-			if (deviceIdsNeedToUpdate.size() >= deviceStatisticsCollectionThreads) {
+		while (!deviceIdDequeue.isEmpty() && threadNum < deviceStatisticsCollectionThreads) {
+			String deviceId = deviceIdDequeue.pollFirst();
+			if (!deviceMap.containsKey(deviceId)) {
+				if (errorDeviceMap.containsKey(deviceId)) {
+					errorDeviceMap.remove(deviceId);
+				}
+				continue;
+			}
+
+			deviceIdsNeedToUpdate.add(deviceId);
+
+			// update error count of device
+			if (errorDeviceMap.containsKey(deviceId)) {
+				if (errorDeviceMap.get(deviceId) >= QSYSCoreConstant.MAX_ERROR_COUNT) {
+					errorDeviceMap.remove(deviceId);
+				} else {
+					errorDeviceMap.put(deviceId, errorDeviceMap.get(deviceId) + 1);
+				}
+			} else {
+				errorDeviceMap.put(deviceId, 1);
+			}
+
+			if (deviceIdsNeedToUpdate.size() >= QSYSCoreConstant.MAX_DEVICE_QUANTITY_PER_THREAD) {
 				List<String> finalDeviceIdsNeedToUpdate = new ArrayList<>(deviceIdsNeedToUpdate);
 
 				Future future = executorService.submit(new DeviceLoader(finalDeviceIdsNeedToUpdate));
@@ -1195,41 +1225,13 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			}
 		}
 
-		for (String deviceId : deviceMap.keySet()) {
-			if (threadNum >= QSYSCoreConstant.MAX_THREAD) {
-				nextDeviceId = deviceId;
-				break;
-			}
-
-			if (deviceId.equals(nextDeviceId)) {
-				checkLoopRunToDevicesNeedToUpdate = true;
-			}
-
-			if (checkLoopRunToDevicesNeedToUpdate) {
-				deviceIdsNeedToUpdate.add(deviceId);
-				if (deviceIdsNeedToUpdate.size() >= deviceStatisticsCollectionThreads) {
-					List<String> finalDeviceIdsNeedToUpdate = new ArrayList<>(deviceIdsNeedToUpdate);
-
-					Future future = executorService.submit(new DeviceLoader(finalDeviceIdsNeedToUpdate));
-					deviceExecutionPool.add(future);
-
-					deviceIdsNeedToUpdate.clear();
-					++threadNum;
-					if (threadNum >= deviceStatisticsCollectionThreads) {
-						nextDeviceId = null;
-					}
-				}
-			}
-		}
-
 		if (!deviceIdsNeedToUpdate.isEmpty()) {
 			List<String> finalDeviceIdsNeedToUpdate = new ArrayList<>(deviceIdsNeedToUpdate);
 
 			Future future = executorService.submit(new DeviceLoader(finalDeviceIdsNeedToUpdate));
 			deviceExecutionPool.add(future);
-
-			deviceIdsNeedToUpdate.clear();
-			nextDeviceId = null;
 		}
+
+		--localPollingInterval;
 	}
 }
