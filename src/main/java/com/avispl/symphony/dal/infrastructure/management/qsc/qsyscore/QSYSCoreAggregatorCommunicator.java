@@ -52,6 +52,7 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSY
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.ControlInterfaceDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.DisplayDevice;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.MonitoringProxyDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.ProcessorDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.VideoIODevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.VideoSourceDevice;
@@ -128,9 +129,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 	private String qrcPort = String.valueOf(QSYSCoreConstant.QRC_PORT);
 	private boolean isEmergencyDelivery = false;
-	private ExtendedStatistics localExtStats;
 	private LoginInfo loginInfo;
-	private ExtendedStatistics localExtStat = null;
+	private ExtendedStatistics localExtStats;
 	private UpdateLocalExtStat updateLocalExtStatDto;
 
 	/**
@@ -338,32 +338,29 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		// This is to make sure if the statistics is being fetched before/after any set of control operations
 		reentrantLock.lock();
 		try {
+			if (!isEmergencyDelivery) {
+				Map<String, String> stats = new HashMap<>();
+				List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
+				filterGainNameSet = convertUserInput(filterGainName);
+				filterComponentNameSet = convertUserInput(filterComponentName);
+				updateFilterDeviceTypeSet();
 
-			Map<String, String> stats = new HashMap<>();
-			List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
-			filterGainNameSet = convertUserInput(filterGainName);
-			filterComponentNameSet = convertUserInput(filterComponentName);
-			updateFilterDeviceTypeSet();
+				if (qrcCommunicator == null) {
+					initQRCCommunicator();
+				}
 
-			if (qrcCommunicator == null) {
-				initQRCCommunicator();
-			}
+				//Create loginInfo
+				if (loginInfo == null) {
+					loginInfo = LoginInfo.createLoginInfoInstance();
+				}
 
-			//Create loginInfo
-			if (loginInfo == null) {
-				loginInfo = LoginInfo.createLoginInfoInstance();
-			}
+				Objects.requireNonNull(stats);
+				if (!StringUtils.isNullOrEmpty(getPassword()) && !StringUtils.isNullOrEmpty(getLogin())) {
+					retrieveTokenFromCore();
+				} else {
+					this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
+				}
 
-			Objects.requireNonNull(stats);
-			if (!StringUtils.isNullOrEmpty(getPassword()) && !StringUtils.isNullOrEmpty(getLogin())) {
-				retrieveTokenFromCore();
-			} else {
-				this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
-			}
-
-			if (isEmergencyDelivery && localExtStat != null) {
-				isEmergencyDelivery = false;
-			} else {
 				//Because there are some threads that keep running when the next getMultiple is called,
 				// so we have to stop all those threads just before the next getMultiple runs
 				if (executorService != null) {
@@ -401,11 +398,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				extendedStatistics.setControllableProperties(controllableProperties);
 				localExtStats = extendedStatistics;
 			}
-
-			if (updateLocalExtStatDto != null) {
-				updateLocalExtStat(updateLocalExtStatDto);
-				updateLocalExtStatDto = null;
-			}
+			isEmergencyDelivery=false;
 		} finally {
 			reentrantLock.unlock();
 		}
@@ -423,6 +416,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	public void controlProperty(ControllableProperty controllableProperty) throws Exception {
 		reentrantLock.lock();
 		try {
+			isEmergencyDelivery = true;
 			//delete when done
 			if (qrcCommunicator == null) {
 				initQRCCommunicator();
@@ -705,7 +699,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						if (QSYSCoreConstant.GAIN_TYPE.equals(componentInfo.getType()) && StringUtils.isNotNullOrEmpty(componentInfo.getId())
 								&& (filterGainNameSet.isEmpty() || filterGainNameSet.contains(componentInfo.getId()))) {
 							retrieveGainComponent(stats, controllableProperties, componentInfo.getId());
-						} else{
+						} else {
 							if (localPollingInterval == 0 && componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType())
 									&& (filterDeviceTypeSet.isEmpty() || filterDeviceTypeSet.contains(componentInfo.getType()))
 									&& componentInfo.getId() != null
@@ -756,6 +750,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				return new DisplayDevice();
 			case QSYSCoreConstant.VIDEO_SOURCE_DEVICE:
 				return new VideoSourceDevice();
+			case QSYSCoreConstant.MONITORING_PROXY:
+				return new MonitoringProxyDevice();
 			default:
 				this.logger.error("Type " + type + " does not exist");
 				return null;
@@ -832,12 +828,12 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * @param updateLocalExtStatDto is the dto to update local extended statistic
 	 */
 	private void updateLocalExtStat(UpdateLocalExtStat updateLocalExtStatDto) {
-		if (localExtStat.getStatistics() == null || localExtStat.getControllableProperties() == null) {
+		if (localExtStats.getStatistics() == null || localExtStats.getControllableProperties() == null) {
 			return;
 		}
 
 		String stringValue = updateLocalExtStatDto.getValue();
-		float value = tryParseFloatOrNull(stringValue);
+		Float value = tryParseFloatOrNull(stringValue);
 
 		try {
 			String request = String.format(RpcMethod.getRequest(), RpcMethod.GET.getName(), RpcMethod.getParamsString(RpcMethod.GET));
@@ -852,7 +848,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						case BYPASS_CONTROL:
 						case MUTE_CONTROL:
 						case INVERT_CONTROL:
-							value = Integer.parseInt(jsonValue.get(QSYSCoreConstant.CONTROL_VALUE).asText());
+							value = (float) Integer.parseInt(jsonValue.get(QSYSCoreConstant.CONTROL_VALUE).asText());
 							break;
 						case GAIN_VALUE_CONTROL:
 							value = Float.parseFloat(jsonValue.get(QSYSCoreConstant.CONTROL_VALUE).asText());
@@ -867,7 +863,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 								}
 							}
 							String[] splitProperty = updateLocalExtStatDto.getProperty().split(QSYSCoreConstant.HASH);
-							localExtStat.getStatistics().put(splitProperty[0] + QSYSCoreConstant.HASH + GainControllingMetric.CURRENT_GAIN_VALUE.getMetric(), stringValue);
+							localExtStats.getStatistics().put(splitProperty[0] + QSYSCoreConstant.HASH + GainControllingMetric.CURRENT_GAIN_VALUE.getMetric(), stringValue);
 							break;
 					}
 				}
@@ -884,16 +880,16 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 				String[] splitProperty = updateLocalExtStatDto.getProperty().split(QSYSCoreConstant.HASH);
 				if (splitProperty.length > 1) {
-					localExtStat.getStatistics().put(splitProperty[0] + QSYSCoreConstant.HASH + GainControllingMetric.CURRENT_GAIN_VALUE.getMetric(), stringValue);
+					localExtStats.getStatistics().put(splitProperty[0] + QSYSCoreConstant.HASH + GainControllingMetric.CURRENT_GAIN_VALUE.getMetric(), stringValue);
 				}
 			}
 		}
 
 		// Gain or Mute
-		localExtStat.getStatistics().put(updateLocalExtStatDto.getProperty(), QSYSCoreConstant.EMPTY);
+		localExtStats.getStatistics().put(updateLocalExtStatDto.getProperty(), QSYSCoreConstant.EMPTY);
 
-		float finalValue = value;
-		localExtStat.getControllableProperties().stream()
+		Float finalValue = value;
+		localExtStats.getControllableProperties().stream()
 				.filter(item -> Objects.equals(item.getName(), updateLocalExtStatDto.getProperty()))
 				.forEach(item -> item.setValue(finalValue));
 	}
@@ -1010,9 +1006,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					throw new IllegalStateException("Error: cannot set gain value of component " + namedComponent);
 				}
 			}
-			if (localExtStat != null) {
+			if (localExtStats!=null){
 				updateLocalExtStatDto = new UpdateLocalExtStat(property, value, namedComponent, GainControllingMetric.getByMetric(metricName));
-				isEmergencyDelivery = true;
+				updateLocalExtStat(updateLocalExtStatDto);
 			}
 		} catch (Exception e) {
 			throw new ResourceNotReachableException("Error when control " + namedComponent + " component", e);
@@ -1068,6 +1064,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					break;
 				case QSYSCoreConstant.CONTROL_INTERFACE_TYPE:
 					filterDeviceTypeSet.add(QSYSCoreConstant.CONTROL_INTERFACE_DEVICE);
+					break;
+				case QSYSCoreConstant.MONITORING_PROXY_TYPE:
+					filterDeviceTypeSet.add(QSYSCoreConstant.MONITORING_PROXY);
 					break;
 				default:
 					logger.error("Type " + type + " does not exist");
