@@ -64,7 +64,8 @@ public class TestQSYSCoreAggregatorCommunicator {
 	public void testControlProperty() throws Exception {
 		ControllableProperty controllableProperty = new ControllableProperty();
 		controllableProperty.setProperty("Gain:ABC#Mute");
-		controllableProperty.setValue(false);
+		controllableProperty.setValue(1);
+		qSYSCoreCommunicator.getMultipleStatistics();
 		Assertions.assertDoesNotThrow(() -> qSYSCoreCommunicator.controlProperty(controllableProperty));
 	}
 
@@ -114,6 +115,7 @@ public class TestQSYSCoreAggregatorCommunicator {
 		qSYSCoreCommunicator.retrieveMultipleStatistics();
 		TimeUnit.MILLISECONDS.sleep(60000);
 		List<AggregatedDevice> aggregatedDevices = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Assertions.assertTrue(aggregatedDevices.size()>0);
 		for (AggregatedDevice aggregatedDevice : aggregatedDevices) {
 			Assertions.assertTrue(stringSet.contains(aggregatedDevice.getDeviceId()));
 		}
