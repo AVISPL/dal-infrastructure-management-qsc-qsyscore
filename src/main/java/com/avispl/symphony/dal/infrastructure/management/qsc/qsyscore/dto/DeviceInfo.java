@@ -36,4 +36,42 @@ public class DeviceInfo {
 	public void setDeviceInfoData(DeviceInfoData deviceInfoData) {
 		this.deviceInfoData = deviceInfoData;
 	}
+
+	/**
+	 * Get value of monitoring property by metric name
+	 *
+	 * @param systemMetric is QSYSCoreSystemMetric instance
+	 * @return String is value of the metric
+	 */
+	public String getValueByMetricName(QSYSCoreSystemMetric systemMetric) {
+		if (null == this.getDeviceInfoData()) {
+			deviceInfoData = new DeviceInfoData();
+		}
+		switch (systemMetric) {
+			case DEVICE_ID:
+				return deviceInfoData.getNaturalId();
+			case SERIAL_NUMBER:
+				return deviceInfoData.getSerial();
+			case DEVICE_NAME:
+				return deviceInfoData.getName();
+			case DEVICE_MODEL:
+				return deviceInfoData.getModel();
+			case FIRMWARE_VERSION:
+				Firmware firmware = deviceInfoData.firmware;
+				if (firmware == null) {
+					firmware = new Firmware();
+				}
+				return firmware.getBuildName();
+			case STATUS:
+				Status status = deviceInfoData.status;
+				if (status == null) {
+					status = new Status();
+				}
+				return status.getName();
+			case UPTIME:
+				return String.valueOf(deviceInfoData.getUptime());
+			default:
+				throw new IllegalArgumentException("The property name doesn't support" + systemMetric.getName());
+		}
+	}
 }

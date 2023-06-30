@@ -38,6 +38,9 @@ public class QSYSCoreConstant {
 	public static final String EMPTY = "";
 	public static final String COMMA = ",";
 	public static final String ZERO = "0";
+	public static final String LAN_A = "LAN_A";
+	public static final String LAN_B = "LAN_B";
+	public static final String HOSTNAME = "Hostname";
 
 	// Device response Type
 	public static final String DISPLAY_DEVICE = "vst_hdmi_display";

@@ -42,24 +42,24 @@ public class DisplayDevice extends QSYSPeripheralDevice {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
 				DisplayDeviceMetric metric = DisplayDeviceMetric.getByProperty(control.get(QSYSCoreConstant.CONTROL_NAME).asText());
 				if (metric == null) {
-					if (control.get(QSYSCoreConstant.CONTROL_NAME).asText().startsWith(DisplayDeviceMetric.CHANNEL.getProperty())) {
-						String[] splitNamed = control.get(QSYSCoreConstant.CONTROL_NAME).asText().split("\\.", 3);
-
-						if (splitNamed.length >= 3 && splitNamed[2].equals(QSYSCoreConstant.EMPTY)) {
-							String groupName = DisplayDeviceMetric.CHANNEL.getMetric() + splitNamed[1] + QSYSCoreConstant.HASH;
-
-							if (splitNamed[2].equals(DisplayDeviceMetric.PEAK_INPUT_LEVEL.getProperty())) {
-								String value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText().replace(QSYSCoreConstant.DB_UNIT, QSYSCoreConstant.EMPTY)
-										: QSYSCoreConstant.DEFAUL_DATA;
-
-								this.getStats().put(groupName + DisplayDeviceMetric.PEAK_INPUT_LEVEL.getMetric(), StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
-							}
-						}
-					}
 					continue;
 				}
-				String value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
-				this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
+
+				String[] splitProperty = metric.getProperty().split(QSYSCoreConstant.FORMAT_STRING);
+				if (splitProperty.length > 1) {
+					String metricName = String.format(metric.getMetric(),
+							control.get(QSYSCoreConstant.CONTROL_NAME).asText().replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
+					String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
+
+					if (metric == DisplayDeviceMetric.CHANNEL_PEAK_INPUT_LEVEL) {
+						value = value.replace(QSYSCoreConstant.DB_UNIT, QSYSCoreConstant.EMPTY);
+					}
+
+					this.getStats().put(metricName, StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
+				} else {
+					String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
+					this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
+				}
 			}
 		}
 	}
