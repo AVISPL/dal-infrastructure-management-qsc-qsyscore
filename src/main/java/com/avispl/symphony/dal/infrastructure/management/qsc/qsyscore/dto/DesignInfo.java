@@ -34,4 +34,26 @@ public class DesignInfo {
 	public void setResult(DesignResult result) {
 		this.result = result;
 	}
+
+	/**
+	 * Get value of monitoring property by metric name
+	 *
+	 * @param qsysCoreDesignMetric is QSYSCoreDesignMetric instance
+	 * @return String is value of the metric
+	 */
+	public String getValueByMetricName(QSYSCoreDesignMetric qsysCoreDesignMetric) {
+
+		switch (qsysCoreDesignMetric) {
+			case STATE:
+				return result.getState();
+			case DESIGN_NAME:
+				return result.getDesignName();
+			case PLATFORM:
+				return result.getPlatform();
+			case DESIGN_CODE:
+				return result.getDesignCode();
+			default:
+				throw new IllegalArgumentException("The property name doesn't support" + qsysCoreDesignMetric.getName());
+		}
+	}
 }

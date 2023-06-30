@@ -46,13 +46,14 @@ public class QSYSCoreConstant {
 	public static final String DISPLAY_DEVICE = "vst_hdmi_display";
 	public static final String PROCESSOR_DEVICE = "core_status";
 	public static final String STREAM_INPUT_DEVICE = "soft_dante_input";
+	public static final String CAMERA_DEVICE = "onvif_camera_operative";
 	public static final String STREAM_OUTPUT_DEVICE = "soft_dante_output";
 	public static final String VIDEO_IO_DEVICE = "vstreamer_status";
 	public static final String VIDEO_SOURCE_DEVICE = "vst_hdmi_source";
 	public static final String CONTROL_INTERFACE_DEVICE = "touch_screen_status";
 	public static final String MONITORING_PROXY = "monitoring_proxy";
 	public static final Set<String> SUPPORTED_DEVICE_TYPE = new HashSet<>(
-			Arrays.asList(PROCESSOR_DEVICE, DISPLAY_DEVICE, STREAM_INPUT_DEVICE, STREAM_OUTPUT_DEVICE, VIDEO_IO_DEVICE, VIDEO_SOURCE_DEVICE, CONTROL_INTERFACE_DEVICE, MONITORING_PROXY));
+			Arrays.asList(CAMERA_DEVICE, PROCESSOR_DEVICE, DISPLAY_DEVICE, STREAM_INPUT_DEVICE, STREAM_OUTPUT_DEVICE, VIDEO_IO_DEVICE, VIDEO_SOURCE_DEVICE, CONTROL_INTERFACE_DEVICE, MONITORING_PROXY));
 
 	/**
 	 * Token timeout is 1 hour ( 60 minutes), as this case reserve 5 minutes to make sure we never failed because of the timeout
@@ -84,6 +85,7 @@ public class QSYSCoreConstant {
 	public static final String VIDEO_SOURCE_TYPE = "Video Source";
 	public static final String CONTROL_INTERFACE_TYPE = "Control Interface";
 	public static final String MONITORING_PROXY_TYPE = "Monitoring Proxy";
+	public static final String CAMERA_TYPE = "Camera";
 
 	//Date time
 	public static final String DAYS = "day(s)";

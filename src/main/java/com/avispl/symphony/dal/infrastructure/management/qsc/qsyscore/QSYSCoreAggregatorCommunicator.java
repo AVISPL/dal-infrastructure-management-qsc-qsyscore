@@ -50,6 +50,7 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.Gai
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreURL;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.CameraDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.ControlInterfaceDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.DisplayDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.MonitoringProxyDevice;
@@ -400,7 +401,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				extendedStatistics.setControllableProperties(controllableProperties);
 				localExtStats = extendedStatistics;
 			}
-			isEmergencyDelivery=false;
+			isEmergencyDelivery = false;
 		} finally {
 			reentrantLock.unlock();
 		}
@@ -614,8 +615,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 			}
 		} catch (Exception e) {
+			//Populate default value if request is error
 			for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
-				stats.put(propertiesName.getName(), "None");
+				stats.put(propertiesName.getName(), QSYSCoreConstant.DEFAUL_DATA);
 			}
 			logger.error("Error when retrieve aggregator information", e);
 		}
@@ -642,14 +644,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 			}
 		} catch (Exception e) {
-			for (QSYSCoreNetworkMetric qsysCoreNetworkMetric : QSYSCoreNetworkMetric.values()) {
-				if (QSYSCoreNetworkMetric.HOSTNAME.getName().equals(qsysCoreNetworkMetric.getName())) {
-					stats.put(qsysCoreNetworkMetric.getName(), "None");
-					continue;
-				}
-				stats.put(QSYSCoreConstant.LAN_A + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), "None");
-				stats.put(QSYSCoreConstant.LAN_B + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), "None");
-			}
+			populateNetworkDefaultValue(stats);
 			logger.error("Error when retrieve aggregator network information", e);
 		}
 	}
@@ -667,14 +662,32 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (response.size() > 1) {
 				DesignInfo designInfo = objectMapper.readValue(response.get(1), DesignInfo.class);
 				if (designInfo != null && designInfo.getResult() != null) {
-					stats.put(QSYSCoreDesignMetric.PLATFORM.getName(), getDataOrDefaultDataIfNull(designInfo.getResult().getPlatform()));
-					stats.put(QSYSCoreDesignMetric.DESIGN_NAME.getName(), getDataOrDefaultDataIfNull(designInfo.getResult().getDesignName()));
-					stats.put(QSYSCoreDesignMetric.DESIGN_CODE.getName(), getDataOrDefaultDataIfNull(designInfo.getResult().getDesignCode()));
-					stats.put(QSYSCoreDesignMetric.STATE.getName(), getDataOrDefaultDataIfNull(designInfo.getResult().getState()));
+					for (QSYSCoreDesignMetric qsysCoreDesignMetric : QSYSCoreDesignMetric.values()) {
+						stats.put(qsysCoreDesignMetric.getName(), designInfo.getValueByMetricName(qsysCoreDesignMetric));
+					}
 				}
 			}
 		} catch (Exception e) {
-			throw new ResourceNotReachableException("Error when retrieve aggregator design", e);
+			for (QSYSCoreDesignMetric qsysCoreDesignMetric : QSYSCoreDesignMetric.values()) {
+				stats.put(qsysCoreDesignMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
+			}
+			logger.error("Error when retrieve aggregator design", e);
+		}
+	}
+
+	/**
+	 * Populate default is none for network properties
+	 *
+	 * @param stats list of Statistics
+	 */
+	private void populateNetworkDefaultValue(Map<String, String> stats) {
+		for (QSYSCoreNetworkMetric qsysCoreNetworkMetric : QSYSCoreNetworkMetric.values()) {
+			if (QSYSCoreNetworkMetric.HOSTNAME.getName().equals(qsysCoreNetworkMetric.getName())) {
+				stats.put(qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
+				continue;
+			}
+			stats.put(QSYSCoreConstant.LAN_A + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
+			stats.put(QSYSCoreConstant.LAN_B + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
 		}
 	}
 
@@ -697,19 +710,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					Set<String> existDeviceSet = new HashSet<>();
 
 					for (ComponentInfo componentInfo : componentWrapper.getResult()) {
-						if (QSYSCoreConstant.GAIN_TYPE.equals(componentInfo.getType()) && StringUtils.isNotNullOrEmpty(componentInfo.getId())
-								&& (filterGainNameSet.isEmpty() || filterGainNameSet.contains(componentInfo.getId()))) {
+						if (QSYSCoreConstant.GAIN_TYPE.equals(componentInfo.getType())) {
 							retrieveGainComponent(stats, controllableProperties, componentInfo.getId());
 						} else {
-							if (localPollingInterval == 0 && componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType())
-									&& (filterDeviceTypeSet.isEmpty() || filterDeviceTypeSet.contains(componentInfo.getType()))
-									&& componentInfo.getId() != null
-									&& (filterComponentNameSet.isEmpty() || filterComponentNameSet.contains(componentInfo.getId()))) {
-								existDeviceSet.add(componentInfo.getId());
-								QSYSPeripheralDevice device = createDeviceByType(componentInfo.getType());
-								if (device != null && !deviceMap.containsKey(componentInfo.getId())) {
-									deviceMap.put(componentInfo.getId(), device);
-								}
+							if (localPollingInterval == 0 && componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType())) {
+								retrieveDevice(existDeviceSet, componentInfo);
 							}
 						}
 					}
@@ -730,6 +735,25 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	}
 
 	/**
+	 * Retrieve information of device
+	 *
+	 * @param existDeviceSet set store all exist device
+	 * @param componentInfo component info of device
+	 */
+	private void retrieveDevice(Set<String> existDeviceSet, ComponentInfo componentInfo) {
+		if (!((filterDeviceTypeSet.isEmpty() || filterDeviceTypeSet.contains(componentInfo.getType()))
+				&& componentInfo.getId() != null
+				&& (filterComponentNameSet.isEmpty() || filterComponentNameSet.contains(componentInfo.getId())))) {
+			return;
+		}
+		existDeviceSet.add(componentInfo.getId());
+		QSYSPeripheralDevice device = createDeviceByType(componentInfo.getType());
+		if (device != null && !deviceMap.containsKey(componentInfo.getId())) {
+			deviceMap.put(componentInfo.getId(), device);
+		}
+	}
+
+	/**
 	 * Create a peripheral device by type
 	 *
 	 * @param type device type need to create
@@ -737,6 +761,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private QSYSPeripheralDevice createDeviceByType(String type) {
 		switch (type) {
+			case QSYSCoreConstant.CAMERA_DEVICE:
+				return new CameraDevice();
 			case QSYSCoreConstant.STREAM_INPUT_DEVICE:
 				return new StreamInputDevice();
 			case QSYSCoreConstant.STREAM_OUTPUT_DEVICE:
@@ -767,6 +793,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * @param deviceId id of gain component
 	 */
 	private void retrieveGainComponent(Map<String, String> stats, List<AdvancedControllableProperty> controllableProperties, String deviceId) {
+		if (!(StringUtils.isNotNullOrEmpty(deviceId)
+				&& (filterGainNameSet.isEmpty() || filterGainNameSet.contains(deviceId)))) {
+			return;
+		}
 		try {
 			String request = String.format(RpcMethod.getRequest(), RpcMethod.GET_CONTROLS.getName(), RpcMethod.getParamsString(RpcMethod.GET_CONTROLS));
 			request = String.format(request, deviceId);
@@ -1007,7 +1037,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					throw new IllegalStateException("Error: cannot set gain value of component " + namedComponent);
 				}
 			}
-			if (localExtStats!=null){
+			if (localExtStats != null) {
 				updateLocalExtStatDto = new UpdateLocalExtStat(property, value, namedComponent, GainControllingMetric.getByMetric(metricName));
 				updateLocalExtStat(updateLocalExtStatDto);
 			}
@@ -1047,6 +1077,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		filterDeviceTypeSet = new HashSet<>();
 		for (String type : stringSet) {
 			switch (type) {
+				case QSYSCoreConstant.CAMERA_TYPE:
+					filterDeviceTypeSet.add(QSYSCoreConstant.CAMERA_DEVICE);
+					break;
 				case QSYSCoreConstant.PROCESSOR_TYPE:
 					filterDeviceTypeSet.add(QSYSCoreConstant.PROCESSOR_DEVICE);
 					break;
