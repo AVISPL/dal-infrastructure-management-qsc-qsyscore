@@ -19,7 +19,9 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.QSYSCoreAggregatorCommunicator;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreMonitoringMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreDesignMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreNetworkMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreSystemMetric;
 
 /**
  * TestQSYSCoreAggregatorCommunicator
@@ -47,18 +49,45 @@ public class TestQSYSCoreAggregatorCommunicator {
 		qSYSCoreCommunicator.destroy();
 	}
 
+	/**
+	 * Test GetMultipleStatistics with system information
+	 *
+	 * Expect GetMultipleStatistics successfully
+	 */
 	@Test
-	public void testGetMultiplestatictis() throws Exception {
-		final ExtendedStatistics[] extendedStatistics = new ExtendedStatistics[1];
-		Assertions.assertDoesNotThrow(() -> extendedStatistics[0] = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0));
-		Map<String, String> stats = extendedStatistics[0].getStatistics();
-		Assertions.assertEquals("3-440F59FA6034C59670FF3C0928929607", stats.get(QSYSCoreMonitoringMetric.DEVICE_ID.getName()));
-		Assertions.assertEquals("Core 110f", stats.get(QSYSCoreMonitoringMetric.DEVICE_MODEL.getName()));
-		Assertions.assertEquals("CeeSalt_TestCore_v3.2", stats.get(QSYSCoreMonitoringMetric.DESIGN_NAME.getName()));
-		Assertions.assertEquals("9.8.0-2304.003", stats.get(QSYSCoreMonitoringMetric.FIRMWARE_VERSION.getName()));
-		Assertions.assertEquals("Running", stats.get(QSYSCoreMonitoringMetric.STATUS.getName()));
-		Assertions.assertEquals("169.254.232.117", stats.get(QSYSCoreMonitoringMetric.LAN_A.getName() + QSYSCoreConstant.HASH + QSYSCoreMonitoringMetric.IP_ADDRESS.getName()));
+	void testGetMultipleStatisticsWithSystemInfo() throws Exception {
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		Assertions.assertEquals("3-440F59FA6034C59670FF3C0928929607", stats.get(QSYSCoreSystemMetric.DEVICE_ID.getName()));
+		Assertions.assertEquals("3-440F59FA6034C59670FF3C0928929607", stats.get(QSYSCoreSystemMetric.SERIAL_NUMBER.getName()));
+		Assertions.assertEquals("Core 110f", stats.get(QSYSCoreSystemMetric.DEVICE_MODEL.getName()));
+		Assertions.assertEquals("CeeSalt_TestCore_v3.2_28-6", stats.get(QSYSCoreDesignMetric.DESIGN_NAME.getName()));
+		Assertions.assertEquals("9.8.0-2304.003", stats.get(QSYSCoreSystemMetric.FIRMWARE_VERSION.getName()));
+		Assertions.assertEquals("29 day(s) 01 hour(s) 06 minute(s) 20 second(s)", stats.get(QSYSCoreSystemMetric.UPTIME.getName()));
+		Assertions.assertEquals("Running", stats.get(QSYSCoreSystemMetric.STATUS.getName()));
 	}
+
+	/**
+	 * Test GetMultipleStatistics with Network Info
+	 *
+	 * Expect get network info successfully
+	 */
+	@Test
+	void testGetMultipleStatisticsNetworkInfo() throws Exception {
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		String group = QSYSCoreConstant.LAN_A+ QSYSCoreConstant.HASH;
+		Assertions.assertEquals("169.254.232.117", stats.get(group + QSYSCoreNetworkMetric.IP_ADDRESS.getName()));
+		Assertions.assertEquals("255.255.0.0", stats.get(group + QSYSCoreNetworkMetric.SUBNET_MASK.getName()));
+		Assertions.assertEquals("0.0.0.0", stats.get(group + QSYSCoreNetworkMetric.GATEWAY.getName()));
+		Assertions.assertEquals("00:60:74:05:34:A9", stats.get(group + QSYSCoreNetworkMetric.MAC_ADDRESS.getName()));
+		group = QSYSCoreConstant.LAN_B + QSYSCoreConstant.HASH;
+		Assertions.assertEquals("***REMOVED***", stats.get(group + QSYSCoreNetworkMetric.IP_ADDRESS.getName()));
+		Assertions.assertEquals("255.255.255.0", stats.get(group + QSYSCoreNetworkMetric.SUBNET_MASK.getName()));
+		Assertions.assertEquals("10.70.50.1", stats.get(group + QSYSCoreNetworkMetric.GATEWAY.getName()));
+		Assertions.assertEquals("00:60:74:05:34:A8", stats.get(group + QSYSCoreNetworkMetric.MAC_ADDRESS.getName()));
+	}
+
 
 	@Test
 	public void testControlProperty() throws Exception {

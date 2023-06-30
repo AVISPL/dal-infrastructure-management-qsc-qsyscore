@@ -64,7 +64,9 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.Design
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.DeviceInfo;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.DeviceLANInfo;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.LoginInfo;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreMonitoringMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreDesignMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreNetworkMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreSystemMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.UpdateLocalExtStat;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.rpc.RpcMethod;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.statistics.DynamicStatisticsDefinitions;
@@ -602,22 +604,20 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (this.loginInfo.getToken() != null) {
 				DeviceInfo deviceInfo = objectMapper.readValue(doGet(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.DEVICE_INFO)), DeviceInfo.class);
 				if (deviceInfo != null && deviceInfo.getDeviceInfoData() != null) {
-					stats.put(QSYSCoreMonitoringMetric.DEVICE_ID.getName(), getDataOrDefaultDataIfNull(deviceInfo.getDeviceInfoData().getNaturalId()));
-					stats.put(QSYSCoreMonitoringMetric.SERIAL_NUMBER.getName(), getDataOrDefaultDataIfNull(deviceInfo.getDeviceInfoData().getSerial()));
-					stats.put(QSYSCoreMonitoringMetric.DEVICE_NAME.getName(), getDataOrDefaultDataIfNull(deviceInfo.getDeviceInfoData().getName()));
-					stats.put(QSYSCoreMonitoringMetric.DEVICE_MODEL.getName(), getDataOrDefaultDataIfNull(deviceInfo.getDeviceInfoData().getModel()));
-
-					if (deviceInfo.getDeviceInfoData().getFirmware() != null) {
-						stats.put(QSYSCoreMonitoringMetric.FIRMWARE_VERSION.getName(), getDataOrDefaultDataIfNull(deviceInfo.getDeviceInfoData().getFirmware().getBuildName()));
-					}
-					stats.put(QSYSCoreMonitoringMetric.UPTIME.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(String.valueOf(deviceInfo.getDeviceInfoData().getUptime()))));
-					if (deviceInfo.getDeviceInfoData().getStatus() != null) {
-						stats.put(QSYSCoreMonitoringMetric.STATUS.getName(), getDataOrDefaultDataIfNull(deviceInfo.getDeviceInfoData().getStatus().getName()));
+					for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
+						if (QSYSCoreSystemMetric.UPTIME.getName().equals(propertiesName.getName())) {
+							stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
+							continue;
+						}
+						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(deviceInfo.getValueByMetricName(propertiesName)));
 					}
 				}
 			}
 		} catch (Exception e) {
-			throw new ResourceNotReachableException("Error when retrieve aggregator information", e);
+			for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
+				stats.put(propertiesName.getName(), "None");
+			}
+			logger.error("Error when retrieve aggregator information", e);
 		}
 	}
 
@@ -630,26 +630,27 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		try {
 			if (this.loginInfo.getToken() != null) {
 				DeviceLANInfo deviceLANInfo = objectMapper.readValue(doGet(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.DEVICE_LAN_INFO)), DeviceLANInfo.class);
-				if (deviceLANInfo != null && deviceLANInfo.getData() != null) {
-					stats.put(QSYSCoreMonitoringMetric.HOSTNAME.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getHostname()));
-					if (deviceLANInfo.getData().getInterfaces().size() > 0) {
-						String group = QSYSCoreMonitoringMetric.LAN_A.getName() + QSYSCoreConstant.HASH;
-						stats.put(group + QSYSCoreMonitoringMetric.IP_ADDRESS.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(0).getIpAddress()));
-						stats.put(group + QSYSCoreMonitoringMetric.SUBNET_MASK.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(0).getNetMask()));
-						stats.put(group + QSYSCoreMonitoringMetric.GATEWAY.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(0).getGateway()));
-						stats.put(group + QSYSCoreMonitoringMetric.MAC_ADDRESS.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(0).getMacAddress()));
-					}
-					if (deviceLANInfo.getData().getInterfaces().size() > 1) {
-						String group = QSYSCoreMonitoringMetric.LAN_B.getName() + QSYSCoreConstant.HASH;
-						stats.put(group + QSYSCoreMonitoringMetric.IP_ADDRESS.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(1).getIpAddress()));
-						stats.put(group + QSYSCoreMonitoringMetric.SUBNET_MASK.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(1).getNetMask()));
-						stats.put(group + QSYSCoreMonitoringMetric.GATEWAY.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(1).getGateway()));
-						stats.put(group + QSYSCoreMonitoringMetric.MAC_ADDRESS.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getData().getInterfaces().get(1).getMacAddress()));
+				if (deviceLANInfo != null && deviceLANInfo.getNetworkInfo() != null) {
+					for (QSYSCoreNetworkMetric networkMetric : QSYSCoreNetworkMetric.values()) {
+						if (QSYSCoreNetworkMetric.HOSTNAME.getName().equals(networkMetric.getName())) {
+							stats.put(networkMetric.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getValueByMetricName(networkMetric, false)));
+							continue;
+						}
+						stats.put(QSYSCoreConstant.LAN_A + QSYSCoreConstant.HASH + networkMetric.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getValueByMetricName(networkMetric, false)));
+						stats.put(QSYSCoreConstant.LAN_B + QSYSCoreConstant.HASH + networkMetric.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getValueByMetricName(networkMetric, true)));
 					}
 				}
 			}
 		} catch (Exception e) {
-			throw new ResourceNotReachableException("Error when retrieve aggregator network information", e);
+			for (QSYSCoreNetworkMetric qsysCoreNetworkMetric : QSYSCoreNetworkMetric.values()) {
+				if (QSYSCoreNetworkMetric.HOSTNAME.getName().equals(qsysCoreNetworkMetric.getName())) {
+					stats.put(qsysCoreNetworkMetric.getName(), "None");
+					continue;
+				}
+				stats.put(QSYSCoreConstant.LAN_A + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), "None");
+				stats.put(QSYSCoreConstant.LAN_B + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), "None");
+			}
+			logger.error("Error when retrieve aggregator network information", e);
 		}
 	}
 
@@ -666,10 +667,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (response.size() > 1) {
 				DesignInfo designInfo = objectMapper.readValue(response.get(1), DesignInfo.class);
 				if (designInfo != null && designInfo.getResult() != null) {
-					stats.put(QSYSCoreMonitoringMetric.PLATFORM.getName(), getDataOrDefaultDataIfNull(designInfo.getResult().getPlatform()));
-					stats.put(QSYSCoreMonitoringMetric.DESIGN_NAME.getName(), getDataOrDefaultDataIfNull(designInfo.getResult().getDesignName()));
-					stats.put(QSYSCoreMonitoringMetric.DESIGN_CODE.getName(), getDataOrDefaultDataIfNull(designInfo.getResult().getDesignCode()));
-					stats.put(QSYSCoreMonitoringMetric.STATE.getName(), getDataOrDefaultDataIfNull(designInfo.getResult().getState()));
+					stats.put(QSYSCoreDesignMetric.PLATFORM.getName(), getDataOrDefaultDataIfNull(designInfo.getResult().getPlatform()));
+					stats.put(QSYSCoreDesignMetric.DESIGN_NAME.getName(), getDataOrDefaultDataIfNull(designInfo.getResult().getDesignName()));
+					stats.put(QSYSCoreDesignMetric.DESIGN_CODE.getName(), getDataOrDefaultDataIfNull(designInfo.getResult().getDesignCode()));
+					stats.put(QSYSCoreDesignMetric.STATE.getName(), getDataOrDefaultDataIfNull(designInfo.getResult().getState()));
 				}
 			}
 		} catch (Exception e) {

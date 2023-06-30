@@ -26,8 +26,9 @@ public enum DisplayDeviceMetric {
 	HDCP_ENCRYPTION("HDCP#Encryption", "hdmi.hdcp.encrypted"),
 	COLOR_FORMAT_STATUS("ColorFormatStatus", "hdmi.color.format.info"),
 	ASPECT_RATIO_STATUS("AspectRatioStatus", "hdmi.aspect.ratio.info"),
-	CHANNEL("Channel", "channel"),
-	PEAK_INPUT_LEVEL("PeakInputLevel(dB)","digital.output.level");
+	CHANNEL_PEAK_INPUT_LEVEL("Channel%s#PeakInputLevel(dB)", "channel.%s.digital.output.level"),
+	CHANNEL_VALID("Channel%s#Valid", "channel.%s.valid"),
+	CHANNEL_CLIP("Channel%s#Clip", "channel.%s.clip");
 
 	private final String metric;
 	private final String property;
@@ -69,8 +70,18 @@ public enum DisplayDeviceMetric {
 	 */
 	public static DisplayDeviceMetric getByProperty(String property) {
 		for (DisplayDeviceMetric controllingMetric : DisplayDeviceMetric.values()) {
-			if (Objects.equals(controllingMetric.getProperty(), property)) {
-				return controllingMetric;
+			String[] splitProperty = controllingMetric.property.split("%s");
+			if (splitProperty.length < 2) {
+				if (Objects.equals(controllingMetric.getProperty(), property)) {
+					return controllingMetric;
+				}
+			} else {
+				try {
+					Integer.parseInt(property.replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
+					return controllingMetric;
+				} catch (Exception e) {
+					continue;
+				}
 			}
 		}
 		return null;

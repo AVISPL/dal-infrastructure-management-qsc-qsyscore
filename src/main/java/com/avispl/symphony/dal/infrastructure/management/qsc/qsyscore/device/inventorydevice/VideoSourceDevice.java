@@ -56,10 +56,10 @@ public class VideoSourceDevice extends QSYSPeripheralDevice {
 						value = value.replace(QSYSCoreConstant.DB_UNIT, QSYSCoreConstant.EMPTY);
 					}
 
-					this.getStats().put(metricName, StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
+					this.getStats().put(metricName, StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 				} else {
-					String value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
-					this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
+					String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
+					this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 				}
 			}
 		}
