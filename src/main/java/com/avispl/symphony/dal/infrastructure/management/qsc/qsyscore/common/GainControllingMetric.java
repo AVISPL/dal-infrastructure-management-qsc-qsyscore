@@ -15,7 +15,7 @@ import java.util.Objects;
  */
 public enum GainControllingMetric {
 	CURRENT_GAIN_VALUE("GainCurrentValue(dB)", null),
-	GAIN_VALUE_CONTROL("GainValueControl", "gain"),
+	GAIN_VALUE_CONTROL("GainControl(dB)", "gain"),
 	MUTE_CONTROL("Mute", "mute"),
 	INVERT_CONTROL("Invert", "invert"),
 	BYPASS_CONTROL("Bypass", "bypass"),

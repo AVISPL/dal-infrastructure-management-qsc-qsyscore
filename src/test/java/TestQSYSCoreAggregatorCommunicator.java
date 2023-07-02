@@ -3,17 +3,20 @@
  */
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
@@ -150,7 +153,36 @@ public class TestQSYSCoreAggregatorCommunicator {
 		}
 	}
 
+	/**
+	 * Test Control GainValueControl value
+	 *
+	 * Expect control GainValueControl successfully
+	 */
 	@Test
-	public void testCustom() {
+	void testControlGainValueControl() throws Exception {
+
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		Assert.assertNull(stats.get("Gain:Gain_3#GainValueControl(dB)"));
+
+		qSYSCoreCommunicator.disconnect();
+//		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainName("Gain_3,Gain_1, Gain_2, Gain");
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		stats = extendedStatistics.getStatistics();
+//		Assertions.assertNotNull(stats.get("Gain:ABC!@X#GainControl(dB)"));
+		ControllableProperty controllableProperty = new ControllableProperty();
+		String value = "0.0";
+		String property = "Gain:Gain_3#GainControl(dB)";
+		controllableProperty.setProperty(property);
+		controllableProperty.setValue(value);
+		qSYSCoreCommunicator.controlProperty(controllableProperty);
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		stats = extendedStatistics.getStatistics();
+//		Assertions.assertEquals(2.0F, stats.get("Gain:ABC#GainCurrentValue(dB)"));
+		List<AdvancedControllableProperty> controllableProperty1 = extendedStatistics.getControllableProperties();
+		Assertions.assertEquals(0.0f, controllableProperty1.stream().filter(item -> item.getName().equals(property)).findFirst().get().getValue());
 	}
+
 }

@@ -41,6 +41,7 @@ public class QSYSCoreConstant {
 	public static final String LAN_A = "LAN_A";
 	public static final String LAN_B = "LAN_B";
 	public static final String HOSTNAME = "Hostname";
+	public static final String SPECIAL_CHARS_PATTERN = ".*[~!@#$%^&\\\\'].*|.*<(\\?).*|.*(\\<)(\\/).*";
 
 	// Device response Type
 	public static final String DISPLAY_DEVICE = "vst_hdmi_display";
@@ -84,7 +85,7 @@ public class QSYSCoreConstant {
 	public static final String VIDEO_IO_TYPE = "Video I/O";
 	public static final String VIDEO_SOURCE_TYPE = "Video Source";
 	public static final String CONTROL_INTERFACE_TYPE = "Control Interface";
-	public static final String MONITORING_PROXY_TYPE = "Monitoring Proxy";
+	public static final String MONITORING_PROXY_TYPE = "External";
 	public static final String CAMERA_TYPE = "Camera";
 
 	//Date time
