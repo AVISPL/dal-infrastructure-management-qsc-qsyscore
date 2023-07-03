@@ -493,10 +493,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			aggregatedDeviceList.add(aggregatedDevice);
 		}
 
-		if (aggregatedDeviceList.isEmpty()) {
-			return aggregatedDeviceList;
-		}
-
 		return aggregatedDeviceList;
 	}
 
