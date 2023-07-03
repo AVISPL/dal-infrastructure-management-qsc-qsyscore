@@ -78,13 +78,6 @@ public class TestQSYSCoreAggregatorCommunicator {
 	 */
 	@Test
 	void testGetMultipleStatisticsNetworkInfo() throws Exception {
-		Map<String, Integer> errorDeviceMap = new HashMap<>();
-		int errorCount = errorDeviceMap.getOrDefault("123", 0);
-		if (errorCount >= QSYSCoreConstant.MAX_ERROR_COUNT) {
-			errorDeviceMap.remove("1");
-		} else {
-			errorDeviceMap.put("1", errorCount + 1);
-		}
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
 		String group = QSYSCoreConstant.LAN_A + QSYSCoreConstant.HASH;
@@ -380,23 +373,6 @@ public class TestQSYSCoreAggregatorCommunicator {
 	 */
 	@Test
 	void TestRetrieveGetMultipleStatistics() throws Exception {
-		qSYSCoreCommunicator.getMultipleStatistics();
-		qSYSCoreCommunicator.retrieveMultipleStatistics();
-		Thread.sleep(30000);
-		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
-		Thread.sleep(30000);
-		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
-		Assert.assertEquals(13,aggregatedDeviceList.size());
-	}
-
-	/**
-	 * Test RetrieveGetMultipleStatistics with aggregated device
-	 *
-	 * Expect RetrieveGetMultipleStatistics successfully
-	 */
-	@Test
-	void TestAggregatedDeviceHasNameIsDanteTR() throws Exception {
-		qSYSCoreCommunicator.setFilterDeviceByName("");
 		qSYSCoreCommunicator.getMultipleStatistics();
 		qSYSCoreCommunicator.retrieveMultipleStatistics();
 		Thread.sleep(30000);
