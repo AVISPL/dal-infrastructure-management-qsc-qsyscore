@@ -2,13 +2,12 @@
  * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
  */
 
-import java.util.Arrays;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
+import java.util.Map.Entry;
 
 import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +20,7 @@ import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.QSYSCoreAggregatorCommunicator;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.GainControllingMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreDesignMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreNetworkMetric;
@@ -34,7 +34,7 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCo
  * @since 1.0.0
  */
 public class TestQSYSCoreAggregatorCommunicator {
-	private final QSYSCoreAggregatorCommunicator qSYSCoreCommunicator = new QSYSCoreAggregatorCommunicator();
+	public QSYSCoreAggregatorCommunicator qSYSCoreCommunicator = new QSYSCoreAggregatorCommunicator();
 
 	@BeforeEach()
 	public void setUp() throws Exception {
@@ -64,7 +64,8 @@ public class TestQSYSCoreAggregatorCommunicator {
 		Assertions.assertEquals("3-440F59FA6034C59670FF3C0928929607", stats.get(QSYSCoreSystemMetric.DEVICE_ID.getName()));
 		Assertions.assertEquals("3-440F59FA6034C59670FF3C0928929607", stats.get(QSYSCoreSystemMetric.SERIAL_NUMBER.getName()));
 		Assertions.assertEquals("Core 110f", stats.get(QSYSCoreSystemMetric.DEVICE_MODEL.getName()));
-		Assertions.assertEquals("CeeSalt_TestCore_v3.2_28-6", stats.get(QSYSCoreDesignMetric.DESIGN_NAME.getName()));
+
+		Assertions.assertEquals("CeeSalt_TestCore_v3.2-MonitoringProxy", stats.get(QSYSCoreDesignMetric.DESIGN_NAME.getName()));
 		Assertions.assertEquals("9.8.0-2304.003", stats.get(QSYSCoreSystemMetric.FIRMWARE_VERSION.getName()));
 		Assertions.assertEquals("29 day(s) 01 hour(s) 06 minute(s) 20 second(s)", stats.get(QSYSCoreSystemMetric.UPTIME.getName()));
 		Assertions.assertEquals("Running", stats.get(QSYSCoreSystemMetric.STATUS.getName()));
@@ -77,9 +78,16 @@ public class TestQSYSCoreAggregatorCommunicator {
 	 */
 	@Test
 	void testGetMultipleStatisticsNetworkInfo() throws Exception {
+		Map<String, Integer> errorDeviceMap = new HashMap<>();
+		int errorCount = errorDeviceMap.getOrDefault("123", 0);
+		if (errorCount >= QSYSCoreConstant.MAX_ERROR_COUNT) {
+			errorDeviceMap.remove("1");
+		} else {
+			errorDeviceMap.put("1", errorCount + 1);
+		}
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
-		String group = QSYSCoreConstant.LAN_A+ QSYSCoreConstant.HASH;
+		String group = QSYSCoreConstant.LAN_A + QSYSCoreConstant.HASH;
 		Assertions.assertEquals("169.254.232.117", stats.get(group + QSYSCoreNetworkMetric.IP_ADDRESS.getName()));
 		Assertions.assertEquals("255.255.0.0", stats.get(group + QSYSCoreNetworkMetric.SUBNET_MASK.getName()));
 		Assertions.assertEquals("0.0.0.0", stats.get(group + QSYSCoreNetworkMetric.GATEWAY.getName()));
@@ -91,66 +99,172 @@ public class TestQSYSCoreAggregatorCommunicator {
 		Assertions.assertEquals("00:60:74:05:34:A8", stats.get(group + QSYSCoreNetworkMetric.MAC_ADDRESS.getName()));
 	}
 
-
+	/**
+	 * Test Control Mute Gain is off
+	 *
+	 * Expect control Gain successfully
+	 */
 	@Test
-	public void testControlProperty() throws Exception {
-		ControllableProperty controllableProperty = new ControllableProperty();
-		controllableProperty.setProperty("Gain:ABC#Mute");
-		controllableProperty.setValue(1);
-		qSYSCoreCommunicator.getMultipleStatistics();
-		Assertions.assertDoesNotThrow(() -> qSYSCoreCommunicator.controlProperty(controllableProperty));
-	}
-
-	@Test
-	public void testRetrieveAggregatorDevice() throws Exception {
-		Assertions.assertDoesNotThrow(() -> {
-			qSYSCoreCommunicator.getMultipleStatistics();
-			qSYSCoreCommunicator.retrieveMultipleStatistics();
-			TimeUnit.MILLISECONDS.sleep(60000);
-			List<AggregatedDevice> aggregatedDevices = qSYSCoreCommunicator.retrieveMultipleStatistics();
-			AggregatedDevice aggregatedDevice = aggregatedDevices.get(0);
-			for (AggregatedDevice aggregatedDevice1 : aggregatedDevices) {
-				Assertions.assertNotNull(aggregatedDevice.getDeviceId());
-				Assertions.assertNotNull(aggregatedDevice.getDeviceName());
-				Assertions.assertNotEquals(0, aggregatedDevice.getProperties().size());
-			}
-		});
-	}
-
-	@Test
-	public void testFilterGainName() throws Exception {
-		qSYSCoreCommunicator.setFilterGainName("ABC");
+	void testControlMuteGainIsOff() throws Exception {
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
-		Assertions.assertTrue(stats.containsKey("Gain:ABC#Bypass"));
-		Assertions.assertFalse(stats.containsKey("Gain:123456#Bypass"));
+		Assert.assertNull(stats.get("Gain:ABC#Mute"));
+
+		qSYSCoreCommunicator.disconnect();
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("ABC");
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		stats = extendedStatistics.getStatistics();
+		Assertions.assertNotNull(stats.get("Gain:ABC#Mute"));
+		ControllableProperty controllableProperty = new ControllableProperty();
+		String value = "0";
+		String property = "Gain:ABC#Mute";
+		controllableProperty.setProperty(property);
+		controllableProperty.setValue(value);
+		qSYSCoreCommunicator.controlProperty(controllableProperty);
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		List<AdvancedControllableProperty> controllableProperty1 = extendedStatistics.getControllableProperties();
+		Assertions.assertEquals("0", controllableProperty1.stream().filter(item -> item.getName().equals(property)).findFirst().get().getValue());
 	}
 
+	/**
+	 * Test Control Mute Gain is on
+	 *
+	 * Expect control Gain successfully
+	 */
 	@Test
-	public void testFilterComponentName() throws Exception {
-		Set<String> stringNameSet = new HashSet<>(Arrays.asList("Generic_AV_Source_HDMI-Source-3", "Status_CeeSalt-Decoder"));
-		qSYSCoreCommunicator.setFilterComponentName("Generic_AV_Source_HDMI-Source-3, Status_CeeSalt-Decoder");
-		qSYSCoreCommunicator.getMultipleStatistics();
-		qSYSCoreCommunicator.retrieveMultipleStatistics();
-		TimeUnit.MILLISECONDS.sleep(60000);
-		List<AggregatedDevice> aggregatedDevices = qSYSCoreCommunicator.retrieveMultipleStatistics();
-		for (AggregatedDevice aggregatedDevice : aggregatedDevices) {
-			Assertions.assertTrue(stringNameSet.contains(aggregatedDevice.getDeviceId()));
-		}
+	void testControlMuteGainIsON() throws Exception {
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		Assert.assertNull(stats.get("Gain:ABC#Mute"));
+
+		qSYSCoreCommunicator.disconnect();
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("ABC");
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		stats = extendedStatistics.getStatistics();
+		Assertions.assertNotNull(stats.get("Gain:ABC#Mute"));
+		ControllableProperty controllableProperty = new ControllableProperty();
+		String value = "1";
+		String property = "Gain:ABC#Mute";
+		controllableProperty.setProperty(property);
+		controllableProperty.setValue(value);
+		qSYSCoreCommunicator.controlProperty(controllableProperty);
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		List<AdvancedControllableProperty> controllableProperty1 = extendedStatistics.getControllableProperties();
+		Assertions.assertEquals("1", controllableProperty1.stream().filter(item -> item.getName().equals(property)).findFirst().get().getValue());
 	}
 
+	/**
+	 * Test Control Invert Gain is Off
+	 *
+	 * Expect control Invert Gain successfully
+	 */
 	@Test
-	public void testFilterDeviceType() throws Exception {
-		Set<String> stringSet = new HashSet<>(Arrays.asList("Software_Dante_RX_Software-Dante-RX-1", "Software_Dante_TX_Software-Dante-TX-1", "Generic_HDMI_Display_HDMI-Display-1"));
-		qSYSCoreCommunicator.setFilterDeviceType(QSYSCoreConstant.STREAM_IO_TYPE + ",  " + QSYSCoreConstant.DISPLAY_TYPE);
-		qSYSCoreCommunicator.getMultipleStatistics();
-		qSYSCoreCommunicator.retrieveMultipleStatistics();
-		TimeUnit.MILLISECONDS.sleep(60000);
-		List<AggregatedDevice> aggregatedDevices = qSYSCoreCommunicator.retrieveMultipleStatistics();
-		Assertions.assertTrue(aggregatedDevices.size()>0);
-		for (AggregatedDevice aggregatedDevice : aggregatedDevices) {
-			Assertions.assertTrue(stringSet.contains(aggregatedDevice.getDeviceId()));
-		}
+	void testControlInvertGainIsOff() throws Exception {
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		Assert.assertNull(stats.get("Gain:ABC#Invert"));
+
+		qSYSCoreCommunicator.disconnect();
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("ABC");
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		stats = extendedStatistics.getStatistics();
+		Assertions.assertNotNull(stats.get("Gain:ABC#Invert"));
+		ControllableProperty controllableProperty = new ControllableProperty();
+		String value = "0";
+		String property = "Gain:ABC#Invert";
+		controllableProperty.setProperty(property);
+		controllableProperty.setValue(value);
+		qSYSCoreCommunicator.controlProperty(controllableProperty);
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		List<AdvancedControllableProperty> controllableProperty1 = extendedStatistics.getControllableProperties();
+		Assertions.assertEquals("0", controllableProperty1.stream().filter(item -> item.getName().equals(property)).findFirst().get().getValue());
+	}
+
+	/**
+	 * Test Control Invert Gain is on
+	 *
+	 * Expect control Invert successfully
+	 */
+	@Test
+	void testControlInvertGainIsON() throws Exception {
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		Assert.assertNull(stats.get("Gain:ABC#Invert"));
+
+		qSYSCoreCommunicator.disconnect();
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("ABC");
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		stats = extendedStatistics.getStatistics();
+		Assertions.assertNotNull(stats.get("Gain:ABC#Invert"));
+		ControllableProperty controllableProperty = new ControllableProperty();
+		String value = "1";
+		String property = "Gain:ABC#Invert";
+		controllableProperty.setProperty(property);
+		controllableProperty.setValue(value);
+		qSYSCoreCommunicator.controlProperty(controllableProperty);
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		List<AdvancedControllableProperty> controllableProperty1 = extendedStatistics.getControllableProperties();
+		Assertions.assertEquals("1", controllableProperty1.stream().filter(item -> item.getName().equals(property)).findFirst().get().getValue());
+	}
+
+	/**
+	 * Test Control Bypass Gain is Off
+	 *
+	 * Expect control Bypass Gain successfully
+	 */
+	@Test
+	void testControlBypassGainIsOff() throws Exception {
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		Assert.assertNull(stats.get("Gain:ABC#Bypass"));
+
+		qSYSCoreCommunicator.disconnect();
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("ABC");
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		stats = extendedStatistics.getStatistics();
+		Assertions.assertNotNull(stats.get("Gain:ABC#Bypass"));
+		ControllableProperty controllableProperty = new ControllableProperty();
+		String value = "0";
+		String property = "Gain:ABC#Bypass";
+		controllableProperty.setProperty(property);
+		controllableProperty.setValue(value);
+		qSYSCoreCommunicator.controlProperty(controllableProperty);
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		List<AdvancedControllableProperty> controllableProperty1 = extendedStatistics.getControllableProperties();
+		Assertions.assertEquals("0", controllableProperty1.stream().filter(item -> item.getName().equals(property)).findFirst().get().getValue());
+	}
+
+	/**
+	 * Test Control Bypass Gain is on
+	 *
+	 * Expect control Bypass successfully
+	 */
+	@Test
+	void testControlBypassGainIsON() throws Exception {
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		Assert.assertNull(stats.get("Gain:ABC#Bypass"));
+
+		qSYSCoreCommunicator.disconnect();
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("ABC");
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		stats = extendedStatistics.getStatistics();
+		Assertions.assertNotNull(stats.get("Gain:ABC#Bypass"));
+		ControllableProperty controllableProperty = new ControllableProperty();
+		String value = "1";
+		String property = "Gain:ABC#Bypass";
+		controllableProperty.setProperty(property);
+		controllableProperty.setValue(value);
+		qSYSCoreCommunicator.controlProperty(controllableProperty);
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		List<AdvancedControllableProperty> controllableProperty1 = extendedStatistics.getControllableProperties();
+		Assertions.assertEquals("1", controllableProperty1.stream().filter(item -> item.getName().equals(property)).findFirst().get().getValue());
 	}
 
 	/**
@@ -160,29 +274,135 @@ public class TestQSYSCoreAggregatorCommunicator {
 	 */
 	@Test
 	void testControlGainValueControl() throws Exception {
-
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
-
 		Map<String, String> stats = extendedStatistics.getStatistics();
-		Assert.assertNull(stats.get("Gain:Gain_3#GainValueControl(dB)"));
+		Assert.assertNull(stats.get("Gain:ABC#GainValueControl(dB)"));
 
 		qSYSCoreCommunicator.disconnect();
-//		qSYSCoreCommunicator.internalDestroy();
-		qSYSCoreCommunicator.setFilterGainName("Gain_3,Gain_1, Gain_2, Gain");
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("ABC");
 		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
 		stats = extendedStatistics.getStatistics();
-//		Assertions.assertNotNull(stats.get("Gain:ABC!@X#GainControl(dB)"));
+		Assertions.assertNotNull(stats.get("Gain:ABC#GainControl(dB)"));
 		ControllableProperty controllableProperty = new ControllableProperty();
-		String value = "0.0";
-		String property = "Gain:Gain_3#GainControl(dB)";
+		String value = "2.0";
+		String property = "Gain:ABC#GainControl(dB)";
 		controllableProperty.setProperty(property);
 		controllableProperty.setValue(value);
 		qSYSCoreCommunicator.controlProperty(controllableProperty);
 		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
 		stats = extendedStatistics.getStatistics();
-//		Assertions.assertEquals(2.0F, stats.get("Gain:ABC#GainCurrentValue(dB)"));
+		Assertions.assertEquals("2.0", stats.get("Gain:ABC#GainCurrentValue(dB)"));
 		List<AdvancedControllableProperty> controllableProperty1 = extendedStatistics.getControllableProperties();
-		Assertions.assertEquals(0.0f, controllableProperty1.stream().filter(item -> item.getName().equals(property)).findFirst().get().getValue());
+		Assertions.assertEquals("2.0", controllableProperty1.stream().filter(item -> item.getName().equals(property)).findFirst().get().getValue());
 	}
 
+	/**
+	 * Test filter not apply gain name
+	 *
+	 * Expect not exits gain name in statistics successfully
+	 */
+	@Test
+	void TestFilterNotApplyGainName() throws Exception {
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		String groupGainFormat = QSYSCoreConstant.GAIN + QSYSCoreConstant.COLON;
+		for (Entry<String, String> stringEntry : stats.entrySet()) {
+			Assert.assertEquals(false, stringEntry.getKey().contains(groupGainFormat));
+		}
+	}
+
+	/**
+	 * Test filter By gain name ABC
+	 *
+	 * Expect filter by gain name successfully
+	 */
+	@Test
+	void TestFilterByGainName() throws Exception {
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> stats = extendedStatistics.getStatistics();
+		String groupGainFormat = QSYSCoreConstant.GAIN + QSYSCoreConstant.COLON + "ABC#";
+		String gainControl = groupGainFormat + GainControllingMetric.GAIN_VALUE_CONTROL.getMetric();
+		String bypass = groupGainFormat + GainControllingMetric.BYPASS_CONTROL.getMetric();
+		String invert = groupGainFormat + GainControllingMetric.INVERT_CONTROL.getMetric();
+		String mute = groupGainFormat + GainControllingMetric.MUTE_CONTROL.getMetric();
+		Assert.assertNull(stats.get(gainControl));
+		Assert.assertNull(stats.get(bypass));
+		Assert.assertNull(stats.get(invert));
+		Assert.assertNull(stats.get(mute));
+
+		//Apply filter by gain name ABC
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("ABC");
+		extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		stats = extendedStatistics.getStatistics();
+		Assert.assertNotNull(stats.get(gainControl));
+		Assert.assertNotNull(stats.get(bypass));
+		Assert.assertNotNull(stats.get(invert));
+		Assert.assertNotNull(stats.get(mute));
+	}
+
+	/**
+	 * Test filter by gain name contain special character
+	 *
+	 * Expect filter by gain name contain special character throw exception
+	 */
+	@Test
+	void TestFilterByGainNameContainSpecialCharacter() {
+		qSYSCoreCommunicator.setFilterGainComponentByName("#");
+		assertThrows(IllegalArgumentException.class, () -> qSYSCoreCommunicator.getMultipleStatistics(), "Error because Gain name contain special character");
+
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("@");
+		assertThrows(IllegalArgumentException.class, () -> qSYSCoreCommunicator.getMultipleStatistics(), "Error because Gain name contain special character");
+
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("!");
+		assertThrows(IllegalArgumentException.class, () -> qSYSCoreCommunicator.getMultipleStatistics(), "Error because Gain name contain special character");
+
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("$");
+		assertThrows(IllegalArgumentException.class, () -> qSYSCoreCommunicator.getMultipleStatistics(), "Error because Gain name contain special character");
+
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("&");
+		assertThrows(IllegalArgumentException.class, () -> qSYSCoreCommunicator.getMultipleStatistics(), "Error because Gain name contain special character");
+
+		qSYSCoreCommunicator.internalDestroy();
+		qSYSCoreCommunicator.setFilterGainComponentByName("%");
+		assertThrows(IllegalArgumentException.class, () -> qSYSCoreCommunicator.getMultipleStatistics(), "Error because Gain name contain special character");
+	}
+
+	/**
+	 * Test RetrieveGetMultipleStatistics
+	 *
+	 * Expect RetrieveGetMultipleStatistics successfully
+	 */
+	@Test
+	void TestRetrieveGetMultipleStatistics() throws Exception {
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(30000);
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Thread.sleep(30000);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Assert.assertEquals(13,aggregatedDeviceList.size());
+	}
+
+	/**
+	 * Test RetrieveGetMultipleStatistics with aggregated device
+	 *
+	 * Expect RetrieveGetMultipleStatistics successfully
+	 */
+	@Test
+	void TestAggregatedDeviceHasNameIsDanteTR() throws Exception {
+		qSYSCoreCommunicator.setFilterDeviceByName("");
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(30000);
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Thread.sleep(30000);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Assert.assertEquals(13,aggregatedDeviceList.size());
+	}
 }

@@ -26,6 +26,8 @@ public enum DisplayDeviceMetric {
 	HDCP_ENCRYPTION("HDCP#Encryption", "hdmi.hdcp.encrypted"),
 	COLOR_FORMAT_STATUS("ColorFormatStatus", "hdmi.color.format.info"),
 	ASPECT_RATIO_STATUS("AspectRatioStatus", "hdmi.aspect.ratio.info"),
+	IDLE_TIMER("IdleTimer", "hdmi.idle.timer"),
+	SLEEP_TIMER("SleepTimer", "hdmi.sleep.timer"),
 	CHANNEL_PEAK_INPUT_LEVEL("Channel%s#PeakInputLevel(dB)", "channel.%s.digital.output.level"),
 	CHANNEL_VALID("Channel%s#Valid", "channel.%s.valid"),
 	CHANNEL_CLIP("Channel%s#Clip", "channel.%s.clip");
