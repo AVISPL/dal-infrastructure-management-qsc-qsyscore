@@ -6,6 +6,8 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
 
 import java.util.Objects;
 
+import com.avispl.symphony.dal.util.StringUtils;
+
 /**
  * GainControllingMetric save all metric fields and corresponding response fields of the gain component
  *
@@ -66,5 +68,20 @@ public enum GainControllingMetric {
 			}
 		}
 		throw new IllegalArgumentException("Cannot find the enum with metric: " + metric);
+	}
+
+	/**
+	 * Get name of metric from QSYSCoreControllingMetric
+	 *
+	 * @param name name of metric Gian
+	 * @return Enum of QSYSCoreControllingMetric
+	 */
+	public static GainControllingMetric getByName(String name) {
+		for (GainControllingMetric controllingMetric : GainControllingMetric.values()) {
+			if (!StringUtils.isNullOrEmpty(controllingMetric.getProperty()) &&controllingMetric.getProperty().equalsIgnoreCase( name)) {
+				return controllingMetric;
+			}
+		}
+		return null;
 	}
 }

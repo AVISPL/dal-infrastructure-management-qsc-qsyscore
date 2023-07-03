@@ -15,6 +15,7 @@ import java.util.Objects;
  */
 public enum StreamOutputDeviceMetric {
 	CHANNEL_PEAK_INPUT_LEVEL("Channel%s#PeakInputLevel(dB)", "channel.%s.digital.output.level"),
+	CHANNEL_INPUT_GAIN("Channel%s#GainCurrentValue(dB)", "channel.%s.output.gain"),
 	STATUS("Status", "output.status"),
 	STATUS_LED("StatusLed", "output.status.led");
 	private final String metric;
