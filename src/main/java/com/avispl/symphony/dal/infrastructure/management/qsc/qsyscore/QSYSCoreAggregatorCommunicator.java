@@ -43,6 +43,7 @@ import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
+import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.api.dal.monitor.aggregator.Aggregator;
@@ -368,8 +369,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					deviceExecutionPool.clear();
 				}
 
+				filterGainComponentByNameSet = handleGainInputFromUser(filterGainComponentByName);
 				if (localPollingInterval == 0) {
-					filterGainComponentByNameSet = handleGainInputFromUser(filterGainComponentByName);
 					filterDeviceByNameSet = convertUserInput(filterDeviceByName);
 					updateFilterDeviceTypeSet();
 				}
@@ -420,6 +421,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	@Override
 	public void controlProperty(ControllableProperty controllableProperty) throws Exception {
 		reentrantLock.lock();
+
+		if (localExtStats == null) {
+			return;
+		}
+
 		try {
 			isEmergencyDelivery = true;
 			//delete when done
@@ -557,13 +563,24 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			logger.debug("Internal destroy is called.");
 		}
 
+		deviceIdDequeue = new ArrayDeque<>();
 		aggregatedDeviceList.clear();
 		deviceMap.clear();
-
+		localPollingInterval = 0;
+		if (localExtStats.getStatistics() != null) {
+			localExtStats.getStatistics().clear();
+		}
+		if (localExtStats.getDynamicStatistics() != null) {
+			localExtStats.getDynamicStatistics().clear();
+		}
+		if (localExtStats.getControllableProperties() != null) {
+			localExtStats.getControllableProperties().clear();
+		}
 		if (executorService != null) {
 			executorService.shutdownNow();
 			executorService = null;
 		}
+		qrcCommunicator = null;
 		devicesExecutionPool.forEach(future -> future.cancel(true));
 		devicesExecutionPool.clear();
 		super.internalDestroy();
@@ -574,6 +591,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	@Override
 	protected void internalInit() throws Exception {
+
+		localPollingInterval = 0;
+
 		if (logger.isDebugEnabled()) {
 			logger.debug("Internal init is called.");
 		}
@@ -607,16 +627,14 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private void retrieveQSYSAggregatorInfo(Map<String, String> stats) {
 		try {
-			if (this.loginInfo.getToken() != null) {
-				DeviceInfo deviceInfo = objectMapper.readValue(doGet(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.DEVICE_INFO)), DeviceInfo.class);
-				if (deviceInfo != null && deviceInfo.getDeviceInfoData() != null) {
-					for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
-						if (QSYSCoreSystemMetric.UPTIME.getName().equals(propertiesName.getName())) {
-							stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
-							continue;
-						}
-						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(deviceInfo.getValueByMetricName(propertiesName)));
+			DeviceInfo deviceInfo = objectMapper.readValue(doGet(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.DEVICE_INFO)), DeviceInfo.class);
+			if (deviceInfo != null && deviceInfo.getDeviceInfoData() != null) {
+				for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
+					if (QSYSCoreSystemMetric.UPTIME.getName().equals(propertiesName.getName())) {
+						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
+						continue;
 					}
+					stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(deviceInfo.getValueByMetricName(propertiesName)));
 				}
 			}
 		} catch (Exception e) {
@@ -635,17 +653,15 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private void retrieveQSYSAggregatorNetworkInfo(Map<String, String> stats) {
 		try {
-			if (this.loginInfo.getToken() != null) {
-				DeviceLANInfo deviceLANInfo = objectMapper.readValue(doGet(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.DEVICE_LAN_INFO)), DeviceLANInfo.class);
-				if (deviceLANInfo != null && deviceLANInfo.getNetworkInfo() != null) {
-					for (QSYSCoreNetworkMetric networkMetric : QSYSCoreNetworkMetric.values()) {
-						if (QSYSCoreNetworkMetric.HOSTNAME.getName().equals(networkMetric.getName())) {
-							stats.put(networkMetric.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getValueByMetricName(networkMetric, false)));
-							continue;
-						}
-						stats.put(QSYSCoreConstant.LAN_A + QSYSCoreConstant.HASH + networkMetric.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getValueByMetricName(networkMetric, false)));
-						stats.put(QSYSCoreConstant.LAN_B + QSYSCoreConstant.HASH + networkMetric.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getValueByMetricName(networkMetric, true)));
+			DeviceLANInfo deviceLANInfo = objectMapper.readValue(doGet(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.DEVICE_LAN_INFO)), DeviceLANInfo.class);
+			if (deviceLANInfo != null && deviceLANInfo.getNetworkInfo() != null) {
+				for (QSYSCoreNetworkMetric networkMetric : QSYSCoreNetworkMetric.values()) {
+					if (QSYSCoreNetworkMetric.HOSTNAME.getName().equals(networkMetric.getName())) {
+						stats.put(networkMetric.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getValueByMetricName(networkMetric, false)));
+						continue;
 					}
+					stats.put(QSYSCoreConstant.LAN_A + QSYSCoreConstant.HASH + networkMetric.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getValueByMetricName(networkMetric, false)));
+					stats.put(QSYSCoreConstant.LAN_B + QSYSCoreConstant.HASH + networkMetric.getName(), getDataOrDefaultDataIfNull(deviceLANInfo.getValueByMetricName(networkMetric, true)));
 				}
 			}
 		} catch (Exception e) {
@@ -748,8 +764,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * @param componentInfo component info of device
 	 */
 	private void retrieveDevice(Set<String> existDeviceSet, ComponentInfo componentInfo) {
-		if (!StringUtils.isNullOrEmpty(filterDeviceByName) && !filterDeviceByNameSet.contains(componentInfo.getType())
-				|| !StringUtils.isNullOrEmpty(filterDeviceByQSYSType) && !filterDeviceByQSYSTypeSet.contains(componentInfo.getId())) {
+		if (!StringUtils.isNullOrEmpty(filterDeviceByName) && !filterDeviceByNameSet.contains(componentInfo.getName())
+				|| !StringUtils.isNullOrEmpty(filterDeviceByQSYSType) && !filterDeviceByQSYSTypeSet.contains(componentInfo.getType())) {
 			return;
 		}
 		existDeviceSet.add(componentInfo.getId());
@@ -941,15 +957,19 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						this.loginInfo.setLoginDateTime(System.currentTimeMillis());
 					} else {
 						this.loginInfo.setToken(null);
-						throw new IllegalAccessException(QSYSCoreConstant.GETTING_TOKEN_ERR);
 					}
 				} else {
-					throw new IllegalAccessException(QSYSCoreConstant.GETTING_TOKEN_ERR);
+					this.loginInfo.setToken(null);
 				}
 			}
+		} catch (CommandFailureException e) {
+			if (e.getStatusCode() == 403) {
+				this.loginInfo.setToken(null);
+			} else {
+				throw new ResourceNotReachableException(String.format("Error when login with username: %s and password: %s", this.getLogin(), this.getPassword()), e);
+			}
 		} catch (Exception e) {
-			this.loginInfo.setToken(null);
-			throw new ResourceNotReachableException("Error when login", e);
+			throw new ResourceNotReachableException(String.format("Error when login with username: %s and password: %s", this.getLogin(), this.getPassword()), e);
 		}
 	}
 

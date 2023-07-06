@@ -6,6 +6,7 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.in
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.EnumTypeHandler;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.StreamOutputDeviceMetric;
 import com.avispl.symphony.dal.util.StringUtils;
@@ -17,7 +18,7 @@ import com.avispl.symphony.dal.util.StringUtils;
  * Created on 6/22/2023
  * @since 1.0.0
  */
-public class StreamOutputDevice extends StreamIODevice{
+public class StreamOutputDevice extends StreamIODevice {
 	/**
 	 * Manage are control of device
 	 *
@@ -40,7 +41,7 @@ public class StreamOutputDevice extends StreamIODevice{
 		super.monitoringDevice(deviceControl);
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
-				StreamOutputDeviceMetric metric = StreamOutputDeviceMetric.getByProperty(control.get(QSYSCoreConstant.CONTROL_NAME).asText());
+				StreamOutputDeviceMetric metric = EnumTypeHandler.getMetricByPropertyName(StreamOutputDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
 
 				if (metric == null) {
 					continue;
@@ -51,14 +52,15 @@ public class StreamOutputDevice extends StreamIODevice{
 					String metricName = String.format(metric.getMetric(),
 							control.get(QSYSCoreConstant.CONTROL_NAME).asText().replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
 
-					String value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
-					if (metric==StreamOutputDeviceMetric.CHANNEL_PEAK_INPUT_LEVEL)
-						value=value.replace(QSYSCoreConstant.DB_UNIT,QSYSCoreConstant.EMPTY);
+					String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
+					if (metric == StreamOutputDeviceMetric.CHANNEL_PEAK_INPUT_LEVEL || metric == StreamOutputDeviceMetric.CHANNEL_OUTPUT_GAIN) {
+						value = value.replace(QSYSCoreConstant.DB_UNIT, QSYSCoreConstant.EMPTY);
+					}
 
-					this.getStats().put(metricName, StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
+					this.getStats().put(metricName, StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 				} else {
-					String value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
-					this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
+					String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
+					this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 				}
 			}
 		}

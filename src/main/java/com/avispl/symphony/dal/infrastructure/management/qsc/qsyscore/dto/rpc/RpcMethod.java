@@ -40,6 +40,7 @@ public enum RpcMethod {
 
 	/**
 	 * Get request
+	 *
 	 * @return request
 	 */
 	public static String getRequest() {
@@ -53,6 +54,7 @@ public enum RpcMethod {
 
 	/**
 	 * Get param of Method
+	 *
 	 * @param rcpMethod method to get request
 	 * @return param
 	 */

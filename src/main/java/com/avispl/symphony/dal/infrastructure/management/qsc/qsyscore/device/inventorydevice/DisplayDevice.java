@@ -7,6 +7,7 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.in
 import com.fasterxml.jackson.databind.JsonNode;
 
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.DisplayDeviceMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.EnumTypeHandler;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
 import com.avispl.symphony.dal.util.StringUtils;
@@ -40,7 +41,7 @@ public class DisplayDevice extends QSYSPeripheralDevice {
 		this.getAdvancedControllableProperties().clear();
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
-				DisplayDeviceMetric metric = DisplayDeviceMetric.getByProperty(control.get(QSYSCoreConstant.CONTROL_NAME).asText());
+				DisplayDeviceMetric metric = EnumTypeHandler.getMetricByPropertyName(DisplayDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
 				if (metric == null) {
 					continue;
 				}

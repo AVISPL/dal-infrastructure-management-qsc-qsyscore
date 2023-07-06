@@ -4,7 +4,6 @@
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -379,6 +378,94 @@ public class TestQSYSCoreAggregatorCommunicator {
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
 		Thread.sleep(30000);
 		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
-		Assert.assertEquals(13,aggregatedDeviceList.size());
+		Assert.assertEquals(16, aggregatedDeviceList.size());
+	}
+
+	/**
+	 * Test RetrieveGetMultipleStatistics with device name is dante
+	 *
+	 * Expect RetrieveGetMultipleStatistics successfully
+	 */
+	@Test
+	void TestAggregatedDeviceHasNameIsDanteTR() throws Exception {
+		qSYSCoreCommunicator.setFilterDeviceByName("Software_Dante_RX_Software-Dante-RX-1");
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(30000);
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Thread.sleep(30000);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Assert.assertEquals(1, aggregatedDeviceList.size());
+	}
+
+	/**
+	 * Test RetrieveGetMultipleStatistics with device type is Streaming I/O
+	 *
+	 * Expect RetrieveGetMultipleStatistics successfully
+	 */
+	@Test
+	void TestAggregatedDeviceHasTypeIsStreamingOI() throws Exception {
+		qSYSCoreCommunicator.setFilterDeviceByQSYSType("Streaming I/O");
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(30000);
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Thread.sleep(30000);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Assert.assertEquals(2, aggregatedDeviceList.size());
+	}
+
+	/**
+	 * Test RetrieveGetMultipleStatistics with device type is not exits
+	 *
+	 * Expect RetrieveGetMultipleStatistics successfully
+	 */
+	@Test
+	void TestAggregatedDeviceHasTypeIsNotExits() throws Exception {
+		qSYSCoreCommunicator.setFilterDeviceByQSYSType("Streaming I/O123");
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(30000);
+		qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Thread.sleep(30000);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Assert.assertEquals(0, aggregatedDeviceList.size());
+	}
+
+	/**
+	 * Test GetMultipleStatistics with historical is supported
+	 *
+	 * Expect GetMultipleStatistics with historical successfully
+	 */
+	@Test
+	void TestGetMultipleStatisticsWithHistorical() throws Exception {
+		qSYSCoreCommunicator.setHistoricalProperties("ProcessorTemperature(C)");
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(30000);
+		qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Thread.sleep(30000);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		AggregatedDevice aggregatedDevice = aggregatedDeviceList.stream().filter(item -> item.getDeviceName().equals("Status_CeeSalt-Core110f")).findFirst().orElse(new AggregatedDevice());
+		Assert.assertNotNull(aggregatedDevice.getDynamicStatistics().get("ProcessorTemperature(C)"));
+	}
+
+	/**
+	 * Test GetMultipleStatistics with historical is not supported
+	 *
+	 * Expect GetMultipleStatistics with historical successfully
+	 */
+	@Test
+	void TestGetMultipleStatisticsWithHistoricalIsNotSupported() throws Exception {
+		qSYSCoreCommunicator.setHistoricalProperties("Status, HardwareModel, StatusLed");
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(30000);
+		qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Thread.sleep(30000);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		for (AggregatedDevice aggregatedDevice : aggregatedDeviceList) {
+			Assert.assertEquals(0, aggregatedDevice.getDynamicStatistics().size());
+		}
 	}
 }
