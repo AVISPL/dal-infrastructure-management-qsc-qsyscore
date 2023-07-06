@@ -57,13 +57,13 @@ public class DeviceInfo {
 			case DEVICE_MODEL:
 				return deviceInfoData.getModel();
 			case FIRMWARE_VERSION:
-				Firmware firmware = deviceInfoData.firmware;
+				Firmware firmware = deviceInfoData.getFirmware();
 				if (firmware == null) {
 					firmware = new Firmware();
 				}
 				return firmware.getBuildName();
 			case STATUS:
-				Status status = deviceInfoData.status;
+				Status status = deviceInfoData.getStatus();
 				if (status == null) {
 					status = new Status();
 				}

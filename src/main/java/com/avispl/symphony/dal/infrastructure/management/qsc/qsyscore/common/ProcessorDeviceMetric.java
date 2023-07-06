@@ -4,8 +4,6 @@
 
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
 
-import java.util.Objects;
-
 /**
  * ProcessorDeviceMetric save all metric fields and corresponding response fields of the Processor device
  *
@@ -57,20 +55,5 @@ public enum ProcessorDeviceMetric {
 	 */
 	public String getProperty() {
 		return property;
-	}
-
-	/**
-	 * Get metric of metric from QSYSCoreControllingMetric
-	 *
-	 * @param property property of metric
-	 * @return Enum of QSYSCoreControllingMetric
-	 */
-	public static ProcessorDeviceMetric getByProperty(String property) {
-		for (ProcessorDeviceMetric controllingMetric : ProcessorDeviceMetric.values()) {
-			if (Objects.equals(controllingMetric.getProperty(), property)) {
-				return controllingMetric;
-			}
-		}
-		return null;
 	}
 }
