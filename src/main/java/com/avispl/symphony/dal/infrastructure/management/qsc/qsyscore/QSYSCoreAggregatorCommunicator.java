@@ -489,15 +489,19 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	public List<AggregatedDevice> retrieveMultipleStatistics() throws Exception {
 		aggregatedDeviceList.clear();
 		for (Entry<String, QSYSPeripheralDevice> device : deviceMap.entrySet()) {
-			AggregatedDevice aggregatedDevice = new AggregatedDevice();
-			aggregatedDevice.setDeviceId(device.getKey());
-			String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
-			aggregatedDevice.setDeviceOnline(deviceStatus != null && deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
-			aggregatedDevice.setDeviceName(device.getKey());
-			aggregatedDevice.setProperties(device.getValue().getStats());
-			provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
-			aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
-			aggregatedDeviceList.add(aggregatedDevice);
+			if ((StringUtils.isNullOrEmpty(filterDeviceByQSYSType) || filterDeviceByQSYSTypeSet.contains(device.getValue().getType())) &&
+					(StringUtils.isNullOrEmpty(filterDeviceByName) || filterDeviceByNameSet.contains(device.getKey()))) {
+				AggregatedDevice aggregatedDevice = new AggregatedDevice();
+				aggregatedDevice.setDeviceId(device.getKey());
+				String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
+				aggregatedDevice.setDeviceOnline(deviceStatus != null && deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
+				aggregatedDevice.setDeviceName(device.getKey());
+				aggregatedDevice.setProperties(device.getValue().getStats());
+				aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
+				provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
+				aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
+				aggregatedDeviceList.add(aggregatedDevice);
+			}
 		}
 
 		return aggregatedDeviceList;
@@ -521,7 +525,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		try {
 			port = Integer.parseInt(this.qrcPort);
 			if (port < QSYSCoreConstant.MIN_PORT || port > QSYSCoreConstant.MAX_PORT) {
-				throw new IllegalArgumentException("Port must greater than " + QSYSCoreConstant.MIN_PORT + " and less than " + QSYSCoreConstant.MAX_PORT);
+				throw new IllegalArgumentException("Port must be greater than or equal " + QSYSCoreConstant.MIN_PORT + " and less than or equal " + QSYSCoreConstant.MAX_PORT);
 			}
 		} catch (Exception e) {
 			throw new ResourceNotReachableException("QRC Port must be a valid port number", e);
@@ -771,6 +775,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		}
 		existDeviceSet.add(componentInfo.getId());
 		QSYSPeripheralDevice device = createDeviceByType(componentInfo.getType());
+		device.setType(componentInfo.getType());
 		if (device != null && !deviceMap.containsKey(componentInfo.getId())) {
 			deviceMap.put(componentInfo.getId(), device);
 		}
@@ -1101,6 +1106,30 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				default:
 					logger.error("Type " + type + " does not exist");
 			}
+		}
+	}
+
+	private String getTypeByResponseType(String responseType) {
+		switch (responseType) {
+			case QSYSCoreConstant.CAMERA_DEVICE:
+				return QSYSCoreConstant.CAMERA_TYPE;
+			case QSYSCoreConstant.STREAM_INPUT_DEVICE:
+			case QSYSCoreConstant.STREAM_OUTPUT_DEVICE:
+				return QSYSCoreConstant.STREAM_IO_TYPE;
+			case QSYSCoreConstant.CONTROL_INTERFACE_DEVICE:
+				return QSYSCoreConstant.CONTROL_INTERFACE_TYPE;
+			case QSYSCoreConstant.VIDEO_IO_DEVICE:
+				return QSYSCoreConstant.VIDEO_IO_TYPE;
+			case QSYSCoreConstant.VIDEO_SOURCE_DEVICE:
+				return QSYSCoreConstant.VIDEO_SOURCE_TYPE;
+			case QSYSCoreConstant.MONITORING_PROXY:
+				return QSYSCoreConstant.MONITORING_PROXY_TYPE;
+			case QSYSCoreConstant.DISPLAY_DEVICE:
+				return QSYSCoreConstant.DISPLAY_TYPE;
+			case QSYSCoreConstant.PROCESSOR_DEVICE:
+				return QSYSCoreConstant.PROCESSOR_TYPE;
+			default:
+				return QSYSCoreConstant.DEFAUL_DATA;
 		}
 	}
 

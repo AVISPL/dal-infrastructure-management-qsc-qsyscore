@@ -37,6 +37,7 @@ public class MonitoringProxyDevice extends QSYSPeripheralDevice {
 					this.getStats().put(MonitoringProxyDeviceMetric.STATUS.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 				}
 			}
+			super.updateStatusMessage();
 		}
 	}
 }
