@@ -468,9 +468,4 @@ public class TestQSYSCoreAggregatorCommunicator {
 			Assert.assertEquals(0, aggregatedDevice.getDynamicStatistics().size());
 		}
 	}
-
-	@Test
-	void customTest(){
-		System.out.println(qSYSCoreCommunicator.convertMillisecondsToDate("1689042921444"));
-	}
 }
