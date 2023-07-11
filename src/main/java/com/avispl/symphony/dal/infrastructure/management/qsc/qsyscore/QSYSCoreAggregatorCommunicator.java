@@ -491,7 +491,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		for (Entry<String, QSYSPeripheralDevice> device : deviceMap.entrySet()) {
 			AggregatedDevice aggregatedDevice = new AggregatedDevice();
 			aggregatedDevice.setDeviceId(device.getKey());
-			aggregatedDevice.setDeviceOnline(true);
+			String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
+			aggregatedDevice.setDeviceOnline(deviceStatus != null && deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
 			aggregatedDevice.setDeviceName(device.getKey());
 			aggregatedDevice.setProperties(device.getValue().getStats());
 			provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
@@ -1049,17 +1050,15 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * @param value time by millisecond
 	 * @return time by date time
 	 */
-	private String convertMillisecondsToDate(String value) {
+	public String convertMillisecondsToDate(String value) {
 		if (QSYSCoreConstant.DEFAUL_DATA.equals(value)) {
 			return value;
 		}
 		try {
 			long milliseconds = Long.parseLong(value);
 			Date date = new Date(milliseconds);
-			SimpleDateFormat dateFormat = new SimpleDateFormat("dd : hh : mm : ss :");
-			return dateFormat.format(date).replaceFirst(QSYSCoreConstant.COLON, QSYSCoreConstant.DAYS)
-					.replaceFirst(QSYSCoreConstant.COLON, QSYSCoreConstant.HOURS).replaceFirst(QSYSCoreConstant.COLON, QSYSCoreConstant.MINUTES)
-					.replaceFirst(QSYSCoreConstant.COLON, QSYSCoreConstant.SECONDS);
+			SimpleDateFormat dateFormat = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy");
+			return dateFormat.format(date);
 		} catch (Exception e) {
 			logger.debug("Error when convert milliseconds to datetime", e);
 		}
@@ -1268,13 +1267,18 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		gainSplit.stream().forEach(namedGain -> namedGainComponents.add(namedGain.trim()));
 
 		StringBuilder errorMessages = new StringBuilder();
+		boolean isFirstComponent = true;
 
 		// Remove start and end spaces of each gain
 		for (String namedGain : gainSplit) {
 			String trimmedNamedGain = namedGain.trim();
 
 			if (trimmedNamedGain.matches(QSYSCoreConstant.SPECIAL_CHARS_PATTERN)) {
-				errorMessages.append("Component ").append(trimmedNamedGain).append(" contains one of these special characters: ~ ! @ # $ % ^ & \\ ' or <? or <\\ ");
+				if (!isFirstComponent) {
+					errorMessages.append(", ");
+				}
+				errorMessages.append(trimmedNamedGain);
+				isFirstComponent = false;
 			} else {
 				namedGainComponents.add(trimmedNamedGain);
 			}
@@ -1282,7 +1286,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 		// Has error message
 		if (errorMessages.length() > 0) {
-			throw new IllegalArgumentException(errorMessages.toString());
+			errorMessages.append(" contains one of these special characters: ~ ! @ # $ % ^ & \\\\ ' or <? or <\\\\ \"");
+			throw new IllegalArgumentException("Component " + errorMessages);
 		}
 
 		return namedGainComponents;

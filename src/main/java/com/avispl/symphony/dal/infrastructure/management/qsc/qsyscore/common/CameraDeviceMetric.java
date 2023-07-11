@@ -12,8 +12,8 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
  * @since 1.0.0
  */
 public enum CameraDeviceMetric {
-	STATUS("Status", "status"),
-	STATUS_LED("StatusLed", "status.led"),
+	STATUS("Status", "camera.status"),
+	STATUS_LED("StatusLed", "camera.status.led"),
 	IP_STREAMING_STATUS("IpStreamingStatus", "streaming.network"),
 	HARDWARE_MODEL("HardwareDetail#Model", "textc.model"),
 	HARDWARE_MAC("HardwareDetail#MacAddress", "textc.mac"),

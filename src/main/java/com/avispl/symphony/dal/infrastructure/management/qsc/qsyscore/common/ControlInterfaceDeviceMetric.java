@@ -17,8 +17,8 @@ public enum ControlInterfaceDeviceMetric {
 	MEMORY_USAGE("MemoryUsage(%)", "memory.usage"),
 	UCI_CURRENT_UCI("UCIName", "current.uci"),
 	SCREEN_TOUCH_ACTIVITY("ScreenControl#TouchActivity", "touched"),
-	SCREEN_DIM_TIMEOUT("ScreenControl#DimTimeout(m)", "screen.dim.timeout"),
-	SCREEN_OFF_TIMEOUT("ScreenControl#OffTimeout(m)", "screen.off.timeout");
+	SCREEN_DIM_TIMEOUT("ScreenControl#DimTimeout(minutes)", "screen.dim.timeout"),
+	SCREEN_OFF_TIMEOUT("ScreenControl#OffTimeout(minutes)", "screen.off.timeout");
 
 
 	private final String metric;

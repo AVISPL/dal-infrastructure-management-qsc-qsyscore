@@ -22,6 +22,8 @@ public class QSYSCoreConstant {
 	public static final String AUTHORIZED = "Authorized";
 	public static final String PASSWORD = "password";
 	public static final String USERNAME = "username";
+	public static final String STATUS = "Status";
+	public static final String OK_STATUS = "OK";
 	public static final String TOKEN = "token";
 	public static final String GETTING_TOKEN_ERR = "Username and Password are incorrect";
 	public static final String HTTP = "http://";
