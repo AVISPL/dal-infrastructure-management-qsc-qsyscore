@@ -56,6 +56,7 @@ public class ProcessorDevice extends QSYSPeripheralDevice {
 				}
 				this.getStats().put(processor.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 			}
+			super.updateStatusMessage();
 		}
 	}
 }

@@ -73,6 +73,7 @@ public class VideoIODevice extends QSYSPeripheralDevice {
 					this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 				}
 			}
+			super.updateStatusMessage();
 		}
 	}
 }

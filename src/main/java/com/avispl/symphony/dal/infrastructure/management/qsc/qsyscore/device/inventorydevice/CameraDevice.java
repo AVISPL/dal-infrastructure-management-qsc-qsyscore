@@ -48,6 +48,7 @@ public class CameraDevice extends QSYSPeripheralDevice {
 				String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
 				this.getStats().put(cameraDeviceMetric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 			}
+			super.updateStatusMessage();
 		}
 	}
 }

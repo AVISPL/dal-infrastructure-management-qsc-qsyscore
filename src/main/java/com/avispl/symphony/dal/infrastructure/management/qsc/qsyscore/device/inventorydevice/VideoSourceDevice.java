@@ -67,6 +67,7 @@ public class VideoSourceDevice extends QSYSPeripheralDevice {
 					this.getStats().put(metric.getMetric(), value);
 				}
 			}
+			super.updateStatusMessage();
 		}
 	}
 }
