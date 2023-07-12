@@ -16,7 +16,7 @@ public enum CameraDeviceMetric {
 	STATUS_LED("StatusLed", "camera.status.led"),
 	IP_STREAMING_STATUS("IpStreamingStatus", "streaming.network"),
 	HARDWARE_MODEL("HardwareDetail#Model", "textc.model"),
-	HARDWARE_MAC("HardwareDetail#MacAddress", "textc.mac"),
+	HARDWARE_MAC("HardwareDetail#MACAddress", "textc.mac"),
 	HARDWARE_SERIAL("HardwareDetail#SerialNumber", "textc.serial");
 
 	private final String metric;
