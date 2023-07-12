@@ -132,7 +132,7 @@ public abstract class QSYSPeripheralDevice implements DeviceBehavior {
 				this.getStats().put(QSYSCoreConstant.STATUS, splitStatus[0]);
 				this.getStats().put(QSYSCoreConstant.STATUS_MESSAGE, splitStatus[1]);
 			} else {
-				this.getStats().put(QSYSCoreConstant.STATUS_MESSAGE, QSYSCoreConstant.DEFAUL_DATA);
+				this.getStats().remove(QSYSCoreConstant.STATUS_MESSAGE);
 			}
 		}
 
@@ -143,7 +143,7 @@ public abstract class QSYSPeripheralDevice implements DeviceBehavior {
 				this.getStats().put(QSYSCoreConstant.STATUS_LED, splitStatus[0]);
 				this.getStats().put(QSYSCoreConstant.STATUS_LED_MESSAGE, splitStatus[1]);
 			} else {
-				this.getStats().put(QSYSCoreConstant.STATUS_LED_MESSAGE, QSYSCoreConstant.DEFAUL_DATA);
+				this.getStats().remove(QSYSCoreConstant.STATUS_LED_MESSAGE);
 			}
 		}
 

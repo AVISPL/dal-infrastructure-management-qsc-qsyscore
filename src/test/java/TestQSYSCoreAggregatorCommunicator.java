@@ -21,6 +21,7 @@ import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.QSYSCoreAggregatorCommunicator;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.GainControllingMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.VideoIODeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreDesignMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreNetworkMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreSystemMetric;
@@ -466,6 +467,45 @@ public class TestQSYSCoreAggregatorCommunicator {
 		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
 		for (AggregatedDevice aggregatedDevice : aggregatedDeviceList) {
 			Assert.assertEquals(0, aggregatedDevice.getDynamicStatistics().size());
+		}
+	}
+
+	/**
+	 * Test aggregated device with list properties
+	 *
+	 * Expect aggregated device with list properties successfully
+	 */
+	@Test
+	void TestAggregatedDeviceByListProperties() throws Exception {
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(30000);
+		qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Thread.sleep(30000);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		AggregatedDevice aggregatedDevice = aggregatedDeviceList.stream().filter(item -> item.getDeviceName().equalsIgnoreCase("Status_CeeSalt-Decoder")).findFirst().orElse(new AggregatedDevice());
+		Map<String, String> stats = aggregatedDevice.getProperties();
+		Assert.assertEquals("Status_CeeSalt-Decoder", aggregatedDevice.getDeviceName());
+		Assert.assertEquals("Status_CeeSalt-Decoder", aggregatedDevice.getDeviceId());
+		Assert.assertEquals(true, aggregatedDevice.getDeviceOnline());
+		//Properties
+		Assert.assertEquals("false", stats.get("AuxPower"));
+		Assert.assertEquals("None", stats.get("ClockOffset"));
+		Assert.assertEquals("0.0", stats.get("CPUTemperature(C)"));
+		Assert.assertEquals("0", stats.get("Fan1"));
+		Assert.assertEquals("0", stats.get("Fan2"));
+		Assert.assertEquals("None", stats.get("Grandmaster"));
+		Assert.assertEquals("0.0", stats.get("I/OTemperature(C)"));
+		Assert.assertEquals("None", stats.get("ParentPort"));
+		Assert.assertEquals("false", stats.get("PoEEqual90w"));
+		Assert.assertEquals("false", stats.get("PoELessThan90w"));
+		Assert.assertEquals("Not Present", stats.get("Status"));
+		Assert.assertEquals("Not Present", stats.get("StatusLed"));
+		Assert.assertEquals("0.0", stats.get("VPUTemperature(C)"));
+		for (VideoIODeviceMetric deviceMetric : VideoIODeviceMetric.values()) {
+			if (deviceMetric.getMetric().contains("#")) {
+				Assert.assertEquals("None", stats.get(deviceMetric.getMetric()));
+			}
 		}
 	}
 }
