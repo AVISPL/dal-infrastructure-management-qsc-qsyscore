@@ -1055,7 +1055,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * @param value time by millisecond
 	 * @return time by date time
 	 */
-	public String convertMillisecondsToDate(String value) {
+	private String convertMillisecondsToDate(String value) {
 		if (QSYSCoreConstant.DEFAUL_DATA.equals(value)) {
 			return value;
 		}
@@ -1109,6 +1109,12 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		}
 	}
 
+	/**
+	 * get type of device by response type
+	 *
+	 * @param responseType response type of device
+	 * @return type of device
+	 */
 	private String getTypeByResponseType(String responseType) {
 		switch (responseType) {
 			case QSYSCoreConstant.CAMERA_DEVICE:
@@ -1287,7 +1293,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 *
 	 * @return Set</ String> is the String array of named gain components return from Gain input
 	 */
-	public Set<String> handleGainInputFromUser(String gain) {
+	private Set<String> handleGainInputFromUser(String gain) {
 		if (StringUtils.isNullOrEmpty(gain)) {
 			return Collections.emptySet();
 		}

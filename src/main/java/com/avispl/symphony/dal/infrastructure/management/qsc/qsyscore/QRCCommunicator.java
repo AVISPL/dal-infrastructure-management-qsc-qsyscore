@@ -40,7 +40,7 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 	protected String login;
 	protected String password;
 	protected int numOfResponses = 2;
-	private int socketTimeout = 4000;
+	private int socketTimeout = 3000;
 	private Socket socket;
 	private int port = 1710;
 
