@@ -3,7 +3,11 @@
  */
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore;
 
+import java.io.IOException;
 import java.math.RoundingMode;
+import java.net.ConnectException;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -183,9 +187,14 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private Set<String> filterDeviceByNameSet;
 
 	/**
-	 * List save all device
+	 * Map save all device
 	 */
 	public volatile TreeMap<String, QSYSPeripheralDevice> deviceMap = new TreeMap<>();
+
+	/**
+	 * Map of ID device and device detail
+	 */
+	public Map<String, QSYSPeripheralDevice> mapOfIdAndAggregatedDeviceList = Collections.synchronizedMap(new HashMap<>());
 
 	/**
 	 * Pool for keeping all the async operations in, to track any operations in progress and cancel them if needed
@@ -326,6 +335,46 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	public void setPollingInterval(String pollingInterval) {
 		this.pollingInterval = pollingInterval;
+	}
+
+	/**
+	 * @return pingTimeout value if host is not reachable within
+	 * the pingTimeout, a ping time in milliseconds otherwise
+	 * if ping is 0ms it's rounded up to 1ms to avoid IU issues on Symphony portal
+	 */
+	@Override
+	public int ping() throws IOException {
+		long pingResultTotal = 0L;
+
+		for (int i = 0; i < this.getPingAttempts(); i++) {
+			long startTime = System.currentTimeMillis();
+
+			try (Socket puSocketConnection = new Socket(this.getHost(), this.getPort())) {
+				puSocketConnection.setSoTimeout(this.getPingTimeout());
+
+				if (puSocketConnection.isConnected()) {
+					long endTime = System.currentTimeMillis();
+					long pingResult = endTime - startTime;
+					pingResultTotal += pingResult;
+					if (this.logger.isTraceEnabled()) {
+						this.logger.trace(String.format("PING OK: Attempt #%s to connect to %s on port %s succeeded in %s ms", i + 1, this.getHost(), this.getPort(), pingResult));
+					}
+				} else {
+					if (this.logger.isDebugEnabled()) {
+						this.logger.debug(String.format("PING DISCONNECTED: Connection to %s did not succeed within the timeout period of %sms", this.getHost(), this.getPingTimeout()));
+					}
+					return this.getPingTimeout();
+				}
+			} catch (SocketTimeoutException | ConnectException tex) {
+				throw new RuntimeException("Socket connection timed out", tex);
+			} catch (Exception e) {
+				if (this.logger.isWarnEnabled()) {
+					this.logger.warn(String.format("PING TIMEOUT: Connection to %s did not succeed, UNKNOWN ERROR %s: ", host, e.getMessage()));
+				}
+				return this.getPingTimeout();
+			}
+		}
+		return Math.max(1, Math.toIntExact(pingResultTotal / this.getPingAttempts()));
 	}
 
 	/**
@@ -487,24 +536,28 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	@Override
 	public List<AggregatedDevice> retrieveMultipleStatistics() throws Exception {
-		aggregatedDeviceList.clear();
-		for (Entry<String, QSYSPeripheralDevice> device : deviceMap.entrySet()) {
-			if ((StringUtils.isNullOrEmpty(filterDeviceByQSYSType) || filterDeviceByQSYSTypeSet.contains(device.getValue().getType())) &&
-					(StringUtils.isNullOrEmpty(filterDeviceByName) || filterDeviceByNameSet.contains(device.getKey()))) {
-				AggregatedDevice aggregatedDevice = new AggregatedDevice();
-				aggregatedDevice.setDeviceId(device.getKey());
-				String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
-				aggregatedDevice.setDeviceOnline(deviceStatus != null && deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
-				aggregatedDevice.setDeviceName(device.getKey());
-				aggregatedDevice.setProperties(device.getValue().getStats());
-				aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
-				provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
-				aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
-				aggregatedDeviceList.add(aggregatedDevice);
+		List<AggregatedDevice> resultAggregatedDeviceList = new ArrayList<>();
+		if (mapOfIdAndAggregatedDeviceList.isEmpty()) {
+			return Collections.emptyList();
+		}
+		synchronized (mapOfIdAndAggregatedDeviceList) {
+			for (Entry<String, QSYSPeripheralDevice> device : mapOfIdAndAggregatedDeviceList.entrySet()) {
+				if ((StringUtils.isNullOrEmpty(filterDeviceByQSYSType) || filterDeviceByQSYSTypeSet.contains(device.getValue().getType())) &&
+						(StringUtils.isNullOrEmpty(filterDeviceByName) || filterDeviceByNameSet.contains(device.getKey()))) {
+					AggregatedDevice aggregatedDevice = new AggregatedDevice();
+					aggregatedDevice.setDeviceId(device.getKey());
+					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
+					aggregatedDevice.setDeviceOnline(deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
+					aggregatedDevice.setDeviceName(device.getKey());
+					aggregatedDevice.setProperties(device.getValue().getStats());
+					aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
+					provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
+					aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
+					resultAggregatedDeviceList.add(aggregatedDevice);
+				}
 			}
 		}
-
-		return aggregatedDeviceList;
+		return resultAggregatedDeviceList;
 	}
 
 	/**
@@ -568,6 +621,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			logger.debug("Internal destroy is called.");
 		}
 
+		mapOfIdAndAggregatedDeviceList.clear();
 		deviceIdDequeue = new ArrayDeque<>();
 		aggregatedDeviceList.clear();
 		deviceMap.clear();
@@ -752,6 +806,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 							String deviceId = iterator.next();
 							if (!existDeviceSet.contains(deviceId)) {
 								iterator.remove();
+								if (mapOfIdAndAggregatedDeviceList.containsKey(deviceId)) {
+									mapOfIdAndAggregatedDeviceList.remove(deviceId);
+								}
 							}
 						}
 					}
@@ -1015,8 +1072,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				if (response.size() > 1) {
 					JsonNode deviceControlResponse = objectMapper.readValue(response.get(1), JsonNode.class);
 					deviceMap.get(deviceId).monitoringDevice(deviceControlResponse);
+					mapOfIdAndAggregatedDeviceList.put(deviceId, deviceMap.get(deviceId));
+					errorDeviceMap.remove(deviceId);
 				}
-				errorDeviceMap.remove(deviceId);
 			} catch (Exception e) {
 				logger.error("Can not retrieve information of aggregated device have id is " + deviceId);
 			}
