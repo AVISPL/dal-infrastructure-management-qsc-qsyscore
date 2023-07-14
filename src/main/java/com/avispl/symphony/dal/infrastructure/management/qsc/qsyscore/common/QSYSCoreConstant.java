@@ -17,11 +17,17 @@ import java.util.Set;
 public class QSYSCoreConstant {
 
 	public static final int QRC_PORT = 1710;
-	public static final int MIN_PORT = 0;
+	public static final int MIN_PORT = 1;
 	public static final int MAX_PORT = 65535;
 	public static final String AUTHORIZED = "Authorized";
 	public static final String PASSWORD = "password";
 	public static final String USERNAME = "username";
+	public static final String STATUS = "Status";
+	public static final String STATUS_LED = "StatusLed";
+	public static final String STATUS_MESSAGE = "StatusMessage";
+	public static final String STATUS_LED_MESSAGE = "StatusLedMessage";
+	public static final String QSYS_TYPE = "QSYSType";
+	public static final String OK_STATUS = "OK";
 	public static final String TOKEN = "token";
 	public static final String GETTING_TOKEN_ERR = "Username and Password are incorrect";
 	public static final String HTTP = "http://";
@@ -30,6 +36,7 @@ public class QSYSCoreConstant {
 	public static final String DOT = ".";
 	public static final String SPACE = " ";
 	public static final String COMMAS = ",";
+	public static final String HYPHEN = "-";
 	public static final String GAIN = "Gain";
 	public static final String GAIN_TYPE = "gain";
 	public static final String DEFAUL_DATA = "None";

@@ -4,8 +4,6 @@
 
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
 
-import java.util.Objects;
-
 /**
  * CameraDeivceMetric save all metric fields and corresponding response fields of the Camera device metric
  *
@@ -14,11 +12,11 @@ import java.util.Objects;
  * @since 1.0.0
  */
 public enum CameraDeviceMetric {
-	STATUS("Status", "status"),
-	STATUS_LED("StatusLed", "status.led"),
+	STATUS("Status", "camera.status"),
+	STATUS_LED("StatusLed", "camera.status.led"),
 	IP_STREAMING_STATUS("IpStreamingStatus", "streaming.network"),
 	HARDWARE_MODEL("HardwareDetail#Model", "textc.model"),
-	HARDWARE_MAC("HardwareDetail#MacAddress", "textc.mac"),
+	HARDWARE_MAC("HardwareDetail#MACAddress", "textc.mac"),
 	HARDWARE_SERIAL("HardwareDetail#SerialNumber", "textc.serial");
 
 	private final String metric;
@@ -51,20 +49,5 @@ public enum CameraDeviceMetric {
 	 */
 	public String getProperty() {
 		return property;
-	}
-
-	/**
-	 * Get metric of metric from QSYSCoreControllingMetric
-	 *
-	 * @param property property of metric
-	 * @return Enum of QSYSCoreControllingMetric
-	 */
-	public static CameraDeviceMetric getByProperty(String property) {
-		for (CameraDeviceMetric controllingMetric : CameraDeviceMetric.values()) {
-			if (Objects.equals(controllingMetric.getProperty(), property)) {
-				return controllingMetric;
-			}
-		}
-		return null;
 	}
 }

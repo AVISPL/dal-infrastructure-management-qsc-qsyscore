@@ -23,13 +23,13 @@ public class DeviceInfoData {
 	private String hostname;
 	private String modelName;
 	private String modelCode;
-	Firmware firmware;
+	private Firmware firmware;
 	private long uptime;
 	private String access;
 	private boolean engineOnline;
 	private long engineUptime;
 	private String redundancy = null;
-	Status status;
+	private Status status;
 	private boolean isComplete;
 	private String serialNo;
 

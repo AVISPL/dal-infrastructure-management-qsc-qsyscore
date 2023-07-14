@@ -4,8 +4,6 @@
 
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
 
-import java.util.Objects;
-
 /**
  * StreamOutputDeviceMetric save all metric fields and corresponding response fields of the Stream Output device
  *
@@ -15,7 +13,7 @@ import java.util.Objects;
  */
 public enum StreamOutputDeviceMetric {
 	CHANNEL_PEAK_INPUT_LEVEL("Channel%s#PeakInputLevel(dB)", "channel.%s.digital.output.level"),
-	CHANNEL_INPUT_GAIN("Channel%s#GainCurrentValue(dB)", "channel.%s.output.gain"),
+	CHANNEL_OUTPUT_GAIN("Channel%s#GainCurrentValue(dB)", "channel.%s.output.gain"),
 	STATUS("Status", "output.status"),
 	STATUS_LED("StatusLed", "output.status.led");
 	private final String metric;
@@ -48,30 +46,5 @@ public enum StreamOutputDeviceMetric {
 	 */
 	public String getProperty() {
 		return property;
-	}
-
-	/**
-	 * Get metric of metric from QSYSCoreControllingMetric
-	 *
-	 * @param property property of metric
-	 * @return Enum of QSYSCoreControllingMetric
-	 */
-	public static StreamOutputDeviceMetric getByProperty(String property) {
-		for (StreamOutputDeviceMetric controllingMetric : StreamOutputDeviceMetric.values()) {
-			String[] splitProperty = controllingMetric.property.split("%s");
-			if (splitProperty.length < 2) {
-				if (Objects.equals(controllingMetric.getProperty(), property)) {
-					return controllingMetric;
-				}
-			} else {
-				try {
-					Integer.parseInt(property.replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
-					return controllingMetric;
-				} catch (Exception e) {
-					continue;
-				}
-			}
-		}
-		return null;
 	}
 }

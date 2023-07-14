@@ -7,6 +7,7 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.in
 import com.fasterxml.jackson.databind.JsonNode;
 
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.CameraDeviceMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.EnumTypeHandler;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
 import com.avispl.symphony.dal.util.StringUtils;
@@ -40,13 +41,14 @@ public class CameraDevice extends QSYSPeripheralDevice {
 		this.getAdvancedControllableProperties().clear();
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
-				CameraDeviceMetric processor = CameraDeviceMetric.getByProperty(control.get(QSYSCoreConstant.CONTROL_NAME).asText());
-				if (processor == null) {
+				CameraDeviceMetric cameraDeviceMetric = EnumTypeHandler.getMetricByName(CameraDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
+				if (cameraDeviceMetric == null) {
 					continue;
 				}
-				String value=control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
-				this.getStats().put(processor.getMetric(), StringUtils.isNotNullOrEmpty(value)?value:QSYSCoreConstant.DEFAUL_DATA);
+				String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
+				this.getStats().put(cameraDeviceMetric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 			}
+			super.updateStatusMessage();
 		}
 	}
 }

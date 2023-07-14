@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 
 /**
  * DeviceInfo
@@ -22,7 +23,26 @@ public abstract class QSYSPeripheralDevice implements DeviceBehavior {
 	private Map<String, String> stats;
 	private List<AdvancedControllableProperty> advancedControllableProperties;
 	private String name;
+	private String type;
 	private String id;
+
+	/**
+	 * Retrieves {@link #type}
+	 *
+	 * @return value of {@link #type}
+	 */
+	public String getType() {
+		return type;
+	}
+
+	/**
+	 * Sets {@link #type} value
+	 *
+	 * @param type new value of {@link #type}
+	 */
+	public void setType(String type) {
+		this.type = type;
+	}
 
 	/**
 	 * Retrieves {@link #stats}
@@ -102,5 +122,30 @@ public abstract class QSYSPeripheralDevice implements DeviceBehavior {
 	public QSYSPeripheralDevice() {
 		stats = new HashMap<>();
 		advancedControllableProperties = new ArrayList<>();
+	}
+
+	public void updateStatusMessage() {
+		String deviceStatus = this.getStats().get(QSYSCoreConstant.STATUS);
+		if (deviceStatus != null) {
+			String[] splitStatus = deviceStatus.split(QSYSCoreConstant.HYPHEN, 2);
+			if (splitStatus.length == 2) {
+				this.getStats().put(QSYSCoreConstant.STATUS, splitStatus[0]);
+				this.getStats().put(QSYSCoreConstant.STATUS_MESSAGE, splitStatus[1]);
+			} else {
+				this.getStats().remove(QSYSCoreConstant.STATUS_MESSAGE);
+			}
+		}
+
+		deviceStatus = this.getStats().get(QSYSCoreConstant.STATUS_LED);
+		if (deviceStatus != null) {
+			String[] splitStatus = deviceStatus.split(QSYSCoreConstant.HYPHEN, 2);
+			if (splitStatus.length == 2) {
+				this.getStats().put(QSYSCoreConstant.STATUS_LED, splitStatus[0]);
+				this.getStats().put(QSYSCoreConstant.STATUS_LED_MESSAGE, splitStatus[1]);
+			} else {
+				this.getStats().remove(QSYSCoreConstant.STATUS_LED_MESSAGE);
+			}
+		}
+
 	}
 }
