@@ -4,8 +4,6 @@
 
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
 
-import java.util.Objects;
-
 /**
  * VideoIODeviceMetric save all metric fields and corresponding response fields of the Video IO device
  *
@@ -70,30 +68,5 @@ public enum VideoIODeviceMetric {
 	 */
 	public String getProperty() {
 		return property;
-	}
-
-	/**
-	 * Get metric of metric from QSYSCoreControllingMetric
-	 *
-	 * @param property property of metric
-	 * @return Enum of QSYSCoreControllingMetric
-	 */
-	public static VideoIODeviceMetric getByProperty(String property) {
-		for (VideoIODeviceMetric controllingMetric : VideoIODeviceMetric.values()) {
-			String[] splitProperty = controllingMetric.property.split("%s");
-			if (splitProperty.length < 2) {
-				if (Objects.equals(controllingMetric.getProperty(), property)) {
-					return controllingMetric;
-				}
-			} else {
-				try {
-					Integer.parseInt(property.replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
-					return controllingMetric;
-				} catch (Exception e) {
-					continue;
-				}
-			}
-		}
-		return null;
 	}
 }

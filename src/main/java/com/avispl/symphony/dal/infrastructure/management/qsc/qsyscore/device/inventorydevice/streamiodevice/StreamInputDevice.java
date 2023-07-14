@@ -6,6 +6,7 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.in
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.EnumTypeHandler;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.StreamInputDeviceMetric;
 import com.avispl.symphony.dal.util.StringUtils;
@@ -40,7 +41,7 @@ public class StreamInputDevice extends StreamIODevice {
 		super.monitoringDevice(deviceControl);
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
-				StreamInputDeviceMetric metric = StreamInputDeviceMetric.getByProperty(control.get(QSYSCoreConstant.CONTROL_NAME).asText());
+				StreamInputDeviceMetric metric = EnumTypeHandler.getMetricByPropertyName(StreamInputDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
 
 				if (metric == null) {
 					continue;
@@ -52,7 +53,7 @@ public class StreamInputDevice extends StreamIODevice {
 							control.get(QSYSCoreConstant.CONTROL_NAME).asText().replace(splitProperty[0], QSYSCoreConstant.EMPTY).replace(splitProperty[1], QSYSCoreConstant.EMPTY));
 
 					String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
-					if (metric == StreamInputDeviceMetric.CHANNEL_PEAK_INPUT_LEVEL) {
+					if (metric == StreamInputDeviceMetric.CHANNEL_PEAK_INPUT_LEVEL || metric == StreamInputDeviceMetric.CHANNEL_INPUT_GAIN) {
 						value = value.replace(QSYSCoreConstant.DB_UNIT, QSYSCoreConstant.EMPTY);
 					}
 
@@ -62,6 +63,7 @@ public class StreamInputDevice extends StreamIODevice {
 					this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 				}
 			}
+			super.updateStatusMessage();
 		}
 	}
 }

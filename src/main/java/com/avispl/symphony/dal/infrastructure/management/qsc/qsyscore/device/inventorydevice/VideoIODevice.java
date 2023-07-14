@@ -6,6 +6,7 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.in
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.EnumTypeHandler;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.VideoIODeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
@@ -40,7 +41,7 @@ public class VideoIODevice extends QSYSPeripheralDevice {
 		this.getAdvancedControllableProperties().clear();
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
-				VideoIODeviceMetric metric = VideoIODeviceMetric.getByProperty(control.get(QSYSCoreConstant.CONTROL_NAME).asText());
+				VideoIODeviceMetric metric = EnumTypeHandler.getMetricByPropertyName(VideoIODeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
 
 				if (metric == null) {
 					continue;
@@ -65,13 +66,14 @@ public class VideoIODevice extends QSYSPeripheralDevice {
 								floatValue = ((float) Math.ceil(floatValue * 100)) / 100;
 								value = String.valueOf(floatValue);
 							} catch (Exception e) {
-								continue;
+								break;
 							}
 							break;
 					}
 					this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 				}
 			}
+			super.updateStatusMessage();
 		}
 	}
 }

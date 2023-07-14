@@ -6,6 +6,7 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.in
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.EnumTypeHandler;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.StreamIODeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
@@ -28,7 +29,7 @@ public abstract class StreamIODevice extends QSYSPeripheralDevice {
 	public void monitoringDevice(JsonNode deviceControl) {
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
-				StreamIODeviceMetric metric = StreamIODeviceMetric.getByProperty(control.get(QSYSCoreConstant.CONTROL_NAME).asText());
+				StreamIODeviceMetric metric = EnumTypeHandler.getMetricByPropertyName(StreamIODeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
 				if (metric == null) {
 					continue;
 				}
