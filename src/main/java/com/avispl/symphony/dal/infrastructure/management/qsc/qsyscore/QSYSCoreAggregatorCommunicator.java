@@ -1029,10 +1029,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (e.getStatusCode() == 403) {
 				this.loginInfo.setToken(null);
 			} else {
-				throw new ResourceNotReachableException(String.format("Error when login with username: %s and password: %s", this.getLogin(), this.getPassword()), e);
+				throw new ResourceNotReachableException("Error when login. Please check the credentials", e);
 			}
 		} catch (Exception e) {
-			throw new ResourceNotReachableException(String.format("Error when login with username: %s and password: %s", this.getLogin(), this.getPassword()), e);
+			throw new ResourceNotReachableException("Error when retrieve token", e);
 		}
 	}
 
