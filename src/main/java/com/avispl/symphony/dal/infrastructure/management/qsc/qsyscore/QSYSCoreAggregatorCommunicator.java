@@ -40,6 +40,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.math.IntMath;
+import javax.security.auth.login.FailedLoginException;
 
 import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
@@ -224,6 +225,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * List of aggregated device
 	 */
 	private List<AggregatedDevice> aggregatedDeviceList = Collections.synchronizedList(new ArrayList<>());
+
+	public QSYSCoreAggregatorCommunicator() {
+		this.setTrustAllCertificates(true);
+	}
 
 
 	/**
@@ -583,7 +588,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		} catch (Exception e) {
 			throw new ResourceNotReachableException("QRC Port must be a valid port number", e);
 		}
-
 		qrcCommunicator = new QRCCommunicator();
 		qrcCommunicator.setHost(this.host);
 		qrcCommunicator.setPort(port);
@@ -625,6 +629,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		deviceIdDequeue = new ArrayDeque<>();
 		aggregatedDeviceList.clear();
 		deviceMap.clear();
+		loginInfo = null;
 		localPollingInterval = 0;
 		if (localExtStats.getStatistics() != null) {
 			localExtStats.getStatistics().clear();
@@ -650,7 +655,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	@Override
 	protected void internalInit() throws Exception {
-
+		loginInfo = null;
 		localPollingInterval = 0;
 
 		if (logger.isDebugEnabled()) {
@@ -696,6 +701,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(deviceInfo.getValueByMetricName(propertiesName)));
 				}
 			}
+		} catch (FailedLoginException e) {
+			throw new ResourceNotReachableException("Error when login. Please check the credentials", e);
 		} catch (Exception e) {
 			//Populate default value if request is error
 			for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
@@ -1026,13 +1033,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 			}
 		} catch (CommandFailureException e) {
-			if (e.getStatusCode() == 403) {
-				this.loginInfo.setToken(null);
-			} else {
-				throw new ResourceNotReachableException("Error when login. Please check the credentials", e);
-			}
+			throw new ResourceNotReachableException("Error when login. Please check the credentials", e);
 		} catch (Exception e) {
-			throw new ResourceNotReachableException("Error when retrieve token", e);
+			throw new ResourceNotReachableException("Error when retrieve token. Please check the login request", e);
 		}
 	}
 
@@ -1044,8 +1047,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private String buildDeviceFullPath(String path) {
 		Objects.requireNonNull(path);
-
-		return QSYSCoreConstant.HTTP + getHost() + path;
+		String protocol = StringUtils.isNullOrEmpty(this.getProtocol()) ? "https" : this.getProtocol();
+		return protocol + "://" + getHost() + path;
 	}
 
 	/**
