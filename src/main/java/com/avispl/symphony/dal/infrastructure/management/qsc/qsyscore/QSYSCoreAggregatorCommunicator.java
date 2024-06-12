@@ -408,11 +408,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					loginInfo = LoginInfo.createLoginInfoInstance();
 				}
 
-				if (!StringUtils.isNullOrEmpty(getPassword()) && !StringUtils.isNullOrEmpty(getLogin())) {
-					retrieveTokenFromCore();
-				} else {
-					this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
-				}
+				retrieveTokenFromCore();
 
 				//Because there are some threads that keep running when the next getMultiple is called,
 				// so we have to stop all those threads just before the next getMultiple runs
@@ -1033,7 +1029,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 			}
 		} catch (CommandFailureException e) {
-			throw new FailedLoginException("Unable to login. Please check device credentials");
+			if (!StringUtils.isNullOrEmpty(getPassword()) && !StringUtils.isNullOrEmpty(getLogin())) {
+				throw new FailedLoginException("Unable to login. Please check device credentials");
+			}
+			this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
 		} catch (Exception e) {
 			throw new ResourceNotReachableException("Unable to retrieve authorization token, login request failed. Please check the login request", e);
 		}
