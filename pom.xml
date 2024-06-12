@@ -7,7 +7,7 @@
 
   <groupId>com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore</groupId>
   <artifactId>symphony-dal-infrastructure-management-qsc-qsyscore</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
 
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
@@ -25,6 +25,11 @@
           <source>8</source>
           <target>8</target>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>3.22.0</version>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
