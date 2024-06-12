@@ -678,7 +678,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * @param stats list statistic property
 	 * @throws ResourceNotReachableException when failedMonitor said all device monitoring data are failed to get
 	 */
-	private void populateQSYSAggregatorMonitoringData(Map<String, String> stats) {
+	private void populateQSYSAggregatorMonitoringData(Map<String, String> stats) throws Exception {
 		retrieveQSYSAggregatorInfo(stats);
 		retrieveQSYSAggregatorNetworkInfo(stats);
 		retrieveQSYSAggregatorDesign(stats);
@@ -689,7 +689,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 *
 	 * @param stats Map store all information
 	 */
-	private void retrieveQSYSAggregatorInfo(Map<String, String> stats) {
+	private void retrieveQSYSAggregatorInfo(Map<String, String> stats) throws Exception {
 		try {
 			DeviceInfo deviceInfo = objectMapper.readValue(doGet(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.DEVICE_INFO)), DeviceInfo.class);
 			if (deviceInfo != null && deviceInfo.getDeviceInfoData() != null) {
@@ -702,7 +702,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 			}
 		} catch (FailedLoginException e) {
-			throw new ResourceNotReachableException("Error when login. Please check the credentials", e);
+			throw new FailedLoginException("Unable to login. Please check device credentials");
 		} catch (Exception e) {
 			//Populate default value if request is error
 			for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
@@ -1010,7 +1010,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * Get a token to log in the device
 	 */
-	private void retrieveTokenFromCore() {
+	private void retrieveTokenFromCore() throws Exception {
 		String login = getLogin();
 		String password = getPassword();
 
@@ -1033,9 +1033,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 			}
 		} catch (CommandFailureException e) {
-			throw new ResourceNotReachableException("Error when login. Please check the credentials", e);
+			throw new FailedLoginException("Unable to login. Please check device credentials");
 		} catch (Exception e) {
-			throw new ResourceNotReachableException("Error when retrieve token. Please check the login request", e);
+			throw new ResourceNotReachableException("Unable to retrieve authorization token, login request failed. Please check the login request", e);
 		}
 	}
 
