@@ -405,14 +405,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 				//Create loginInfo
 				if (loginInfo == null) {
-					loginInfo = LoginInfo.createLoginInfoInstance();
+					loginInfo = new LoginInfo();
 				}
 
-				if (!StringUtils.isNullOrEmpty(getPassword()) && !StringUtils.isNullOrEmpty(getLogin())) {
-					retrieveTokenFromCore();
-				} else {
-					this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
-				}
+				retrieveTokenFromCore();
 
 				//Because there are some threads that keep running when the next getMultiple is called,
 				// so we have to stop all those threads just before the next getMultiple runs
@@ -608,7 +604,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	@Override
 	protected HttpHeaders putExtraRequestHeaders(HttpMethod httpMethod, String uri, HttpHeaders headers) {
-		if (loginInfo.getToken() != null) {
+		if (loginInfo.getToken() != null && !uri.contains(QSYSCoreURL.BASE_URI + QSYSCoreURL.TOKEN)) {
 			headers.setBearerAuth(loginInfo.getToken());
 		}
 		return headers;
@@ -1033,7 +1029,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 			}
 		} catch (CommandFailureException e) {
-			throw new FailedLoginException("Unable to login. Please check device credentials");
+			if (!StringUtils.isNullOrEmpty(getPassword()) && !StringUtils.isNullOrEmpty(getLogin())) {
+				throw new FailedLoginException("Unable to login. Please check device credentials");
+			}
+			this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
+			this.loginInfo.setLoginDateTime(System.currentTimeMillis());
 		} catch (Exception e) {
 			throw new ResourceNotReachableException("Unable to retrieve authorization token, login request failed. Please check the login request", e);
 		}
