@@ -1035,7 +1035,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
 			this.loginInfo.setLoginDateTime(System.currentTimeMillis());
 		} catch (Exception e) {
-			throw new ResourceNotReachableException("Unable to retrieve authorization token, login request failed. Please check the login request", e);
+			throw new ResourceNotReachableException("Unable to retrieve the authorization token, endpoint not reachable", e);
 		}
 	}
 
