@@ -40,6 +40,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.math.IntMath;
+import javax.security.auth.login.FailedLoginException;
 
 import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
@@ -225,6 +226,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private List<AggregatedDevice> aggregatedDeviceList = Collections.synchronizedList(new ArrayList<>());
 
+	public QSYSCoreAggregatorCommunicator() {
+		this.setTrustAllCertificates(true);
+	}
+
 
 	/**
 	 * Retrieves {@link #historicalProperties}
@@ -400,14 +405,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 				//Create loginInfo
 				if (loginInfo == null) {
-					loginInfo = LoginInfo.createLoginInfoInstance();
+					loginInfo = new LoginInfo();
 				}
 
-				if (!StringUtils.isNullOrEmpty(getPassword()) && !StringUtils.isNullOrEmpty(getLogin())) {
-					retrieveTokenFromCore();
-				} else {
-					this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
-				}
+				retrieveTokenFromCore();
 
 				//Because there are some threads that keep running when the next getMultiple is called,
 				// so we have to stop all those threads just before the next getMultiple runs
@@ -583,7 +584,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		} catch (Exception e) {
 			throw new ResourceNotReachableException("QRC Port must be a valid port number", e);
 		}
-
 		qrcCommunicator = new QRCCommunicator();
 		qrcCommunicator.setHost(this.host);
 		qrcCommunicator.setPort(port);
@@ -604,7 +604,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	@Override
 	protected HttpHeaders putExtraRequestHeaders(HttpMethod httpMethod, String uri, HttpHeaders headers) {
-		if (loginInfo.getToken() != null) {
+		if (loginInfo.getToken() != null && !uri.contains(QSYSCoreURL.BASE_URI + QSYSCoreURL.TOKEN)) {
 			headers.setBearerAuth(loginInfo.getToken());
 		}
 		return headers;
@@ -625,6 +625,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		deviceIdDequeue = new ArrayDeque<>();
 		aggregatedDeviceList.clear();
 		deviceMap.clear();
+		loginInfo = null;
 		localPollingInterval = 0;
 		if (localExtStats.getStatistics() != null) {
 			localExtStats.getStatistics().clear();
@@ -650,7 +651,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	@Override
 	protected void internalInit() throws Exception {
-
+		loginInfo = null;
 		localPollingInterval = 0;
 
 		if (logger.isDebugEnabled()) {
@@ -673,7 +674,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * @param stats list statistic property
 	 * @throws ResourceNotReachableException when failedMonitor said all device monitoring data are failed to get
 	 */
-	private void populateQSYSAggregatorMonitoringData(Map<String, String> stats) {
+	private void populateQSYSAggregatorMonitoringData(Map<String, String> stats) throws Exception {
 		retrieveQSYSAggregatorInfo(stats);
 		retrieveQSYSAggregatorNetworkInfo(stats);
 		retrieveQSYSAggregatorDesign(stats);
@@ -684,7 +685,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 *
 	 * @param stats Map store all information
 	 */
-	private void retrieveQSYSAggregatorInfo(Map<String, String> stats) {
+	private void retrieveQSYSAggregatorInfo(Map<String, String> stats) throws Exception {
 		try {
 			DeviceInfo deviceInfo = objectMapper.readValue(doGet(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.DEVICE_INFO)), DeviceInfo.class);
 			if (deviceInfo != null && deviceInfo.getDeviceInfoData() != null) {
@@ -696,6 +697,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(deviceInfo.getValueByMetricName(propertiesName)));
 				}
 			}
+		} catch (FailedLoginException e) {
+			throw new FailedLoginException("Unable to login. Please check device credentials");
 		} catch (Exception e) {
 			//Populate default value if request is error
 			for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
@@ -1003,7 +1006,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * Get a token to log in the device
 	 */
-	private void retrieveTokenFromCore() {
+	private void retrieveTokenFromCore() throws Exception {
 		String login = getLogin();
 		String password = getPassword();
 
@@ -1026,13 +1029,13 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 			}
 		} catch (CommandFailureException e) {
-			if (e.getStatusCode() == 403) {
-				this.loginInfo.setToken(null);
-			} else {
-				throw new ResourceNotReachableException("Error when login. Please check the credentials", e);
+			if (!StringUtils.isNullOrEmpty(getPassword()) && !StringUtils.isNullOrEmpty(getLogin())) {
+				throw new FailedLoginException("Unable to login. Please check device credentials");
 			}
+			this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
+			this.loginInfo.setLoginDateTime(System.currentTimeMillis());
 		} catch (Exception e) {
-			throw new ResourceNotReachableException("Error when retrieve token", e);
+			throw new ResourceNotReachableException("Unable to retrieve the authorization token, endpoint not reachable", e);
 		}
 	}
 
@@ -1044,8 +1047,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private String buildDeviceFullPath(String path) {
 		Objects.requireNonNull(path);
-
-		return QSYSCoreConstant.HTTP + getHost() + path;
+		String protocol = StringUtils.isNullOrEmpty(this.getProtocol()) ? "https" : this.getProtocol();
+		return protocol + "://" + getHost() + path;
 	}
 
 	/**

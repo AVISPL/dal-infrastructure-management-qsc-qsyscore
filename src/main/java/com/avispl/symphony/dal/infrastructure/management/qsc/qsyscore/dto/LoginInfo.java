@@ -14,21 +14,14 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSY
  * @since 1.0.0
  */
 public class LoginInfo {
-
-	private static LoginInfo loginInfo;
 	private long loginDateTime = 0;
 	private String token;
 
 	/**
 	 * Create an instance of LoginInfo
-	 *
-	 * @return instance of LoginInfo
 	 */
-	public static LoginInfo createLoginInfoInstance() {
-		if (loginInfo == null) {
-			loginInfo = new LoginInfo();
-		}
-		return loginInfo;
+	public LoginInfo() {
+		this.loginDateTime = 0;
 	}
 
 	/**

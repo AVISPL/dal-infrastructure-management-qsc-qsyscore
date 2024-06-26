@@ -62,7 +62,7 @@ public enum GainControllingMetric {
 	 * @return Enum of QSYSCoreControllingMetric
 	 */
 	public static GainControllingMetric getByMetric(String metric) {
-		for (GainControllingMetric controllingMetric : GainControllingMetric.values()) {
+		for (GainControllingMetric controllingMetric : values()) {
 			if (Objects.equals(controllingMetric.getMetric(), metric)) {
 				return controllingMetric;
 			}
@@ -77,7 +77,7 @@ public enum GainControllingMetric {
 	 * @return Enum of QSYSCoreControllingMetric
 	 */
 	public static GainControllingMetric getByName(String name) {
-		for (GainControllingMetric controllingMetric : GainControllingMetric.values()) {
+		for (GainControllingMetric controllingMetric : values()) {
 			if (!StringUtils.isNullOrEmpty(controllingMetric.getProperty()) &&controllingMetric.getProperty().equalsIgnoreCase( name)) {
 				return controllingMetric;
 			}
