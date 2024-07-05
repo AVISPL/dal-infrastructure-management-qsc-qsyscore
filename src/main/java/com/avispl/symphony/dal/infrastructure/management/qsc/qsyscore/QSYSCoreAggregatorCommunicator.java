@@ -107,6 +107,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (!deviceMap.isEmpty()) {
 				retrieveAggregatedDeviceByIdList(this.deviceIds);
 			}
+			isFinishedCollectData++;
 		}
 	}
 
@@ -225,6 +226,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * List of aggregated device
 	 */
 	private List<AggregatedDevice> aggregatedDeviceList = Collections.synchronizedList(new ArrayList<>());
+
+	/**
+	 * Keep track all data is collected
+	 */
+	private volatile int isFinishedCollectData = 0;
 
 	public QSYSCoreAggregatorCommunicator() {
 		this.setTrustAllCertificates(true);
@@ -399,6 +405,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				Map<String, String> stats = new HashMap<>();
 				List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
 
+				resetSocketConnection();
+
 				if (qrcCommunicator == null) {
 					initQRCCommunicator();
 				}
@@ -456,6 +464,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			}
 			isEmergencyDelivery = false;
 		} finally {
+			isFinishedCollectData += 1;
 			reentrantLock.unlock();
 		}
 
@@ -478,6 +487,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 		try {
 			isEmergencyDelivery = true;
+
+			resetSocketConnection();
+
 			//delete when done
 			if (qrcCommunicator == null) {
 				initQRCCommunicator();
@@ -591,6 +603,17 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	}
 
 	/**
+	 * Reset socket connection for each polling interval
+	 */
+	public void resetSocketConnection() {
+		if (isFinishedCollectData == 2 && qrcCommunicator != null) {
+			qrcCommunicator.destroyChannel();
+			qrcCommunicator = null;
+			isFinishedCollectData = 0;
+		}
+	}
+
+	/**
 	 * {@inheritDoc}
 	 */
 	@Override
@@ -641,6 +664,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			executorService = null;
 		}
 		qrcCommunicator = null;
+		isFinishedCollectData = 0;
 		devicesExecutionPool.forEach(future -> future.cancel(true));
 		devicesExecutionPool.clear();
 		super.internalDestroy();
