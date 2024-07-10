@@ -42,6 +42,7 @@ public class TestQSYSCoreAggregatorCommunicator {
 		qSYSCoreCommunicator.setLogin("");
 		qSYSCoreCommunicator.setPassword("");
 		qSYSCoreCommunicator.setPort(80);
+		qSYSCoreCommunicator.setProtocol("https");
 		qSYSCoreCommunicator.init();
 		qSYSCoreCommunicator.connect();
 	}
