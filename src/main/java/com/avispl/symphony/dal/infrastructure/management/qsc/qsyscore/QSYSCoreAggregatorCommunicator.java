@@ -107,7 +107,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (!deviceMap.isEmpty()) {
 				retrieveAggregatedDeviceByIdList(this.deviceIds);
 			}
-			isFinishedCollectData++;
+			qrcCommandThreshold++;
 		}
 	}
 
@@ -228,9 +228,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private List<AggregatedDevice> aggregatedDeviceList = Collections.synchronizedList(new ArrayList<>());
 
 	/**
-	 * Keep track all data is collected
+	 * The variable checks if all QRC commands have been sent, and if it reaches 2 (commands sent from the worker thread and main thread),
+	 * we can close the socket connection.
 	 */
-	private volatile int isFinishedCollectData = 0;
+	private volatile int qrcCommandThreshold = 0;
 
 	public QSYSCoreAggregatorCommunicator() {
 		this.setTrustAllCertificates(true);
@@ -405,6 +406,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				Map<String, String> stats = new HashMap<>();
 				List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
 
+				// The QSys Core socket closes automatically after 60 seconds (as specified in the API document),
+				// however if we let it close automatically that results in unexpected behavior for the adapter, so we close it intentionally.
 				resetSocketConnection();
 
 				if (qrcCommunicator == null) {
@@ -464,7 +467,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			}
 			isEmergencyDelivery = false;
 		} finally {
-			isFinishedCollectData += 1;
+			qrcCommandThreshold += 1;
 			reentrantLock.unlock();
 		}
 
@@ -606,10 +609,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * Reset socket connection for each polling interval
 	 */
 	public void resetSocketConnection() {
-		if (isFinishedCollectData == 2 && qrcCommunicator != null) {
+		if (qrcCommandThreshold == 2 && qrcCommunicator != null) {
 			qrcCommunicator.destroyChannel();
 			qrcCommunicator = null;
-			isFinishedCollectData = 0;
+			qrcCommandThreshold = 0;
 		}
 	}
 
@@ -664,7 +667,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			executorService = null;
 		}
 		qrcCommunicator = null;
-		isFinishedCollectData = 0;
+		qrcCommandThreshold = 0;
 		devicesExecutionPool.forEach(future -> future.cancel(true));
 		devicesExecutionPool.clear();
 		super.internalDestroy();
