@@ -10,7 +10,9 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -20,6 +22,7 @@ import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.dal.BaseDevice;
 import com.avispl.symphony.dal.communicator.Communicator;
 import com.avispl.symphony.dal.communicator.ConnectionStatus;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 
 /**
  * QRCCommunicator is a class that implements the QRCCommunicator interface to provide communication and interaction with a QSys-Core device.
@@ -40,7 +43,7 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 	protected String login;
 	protected String password;
 	protected int numOfResponses = 2;
-	private int socketTimeout = 3000;
+	private int socketTimeout = 30000;
 	private Socket socket;
 	private int port = 1710;
 
@@ -291,9 +294,9 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 
 		String[] response;
 		try {
+			this.numOfResponses = this.status.getConnectionState() == ConnectionState.Connected? 1: 2;
 			response = this.send(data, true);
 		} finally {
-			this.destroyChannel();
 			writeLock.unlock();
 		}
 
@@ -435,7 +438,19 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 		} while (countResponses != this.numOfResponses);
 
 		String response = stringBuilder.toString();
-		return response.split("\00");
+		return extractResponse(response);
+	}
+
+	/**
+	 * Compose responses data
+	 */
+	private String[] extractResponse(String response) {
+		List<String> result = new ArrayList<>();
+		if (this.numOfResponses == 1) {
+			result.add(QSYSCoreConstant.EMPTY);
+		}
+		result.addAll(Arrays.asList(response.split("\00")));
+		return result.toArray(new String[0]);
 	}
 
 	/**
