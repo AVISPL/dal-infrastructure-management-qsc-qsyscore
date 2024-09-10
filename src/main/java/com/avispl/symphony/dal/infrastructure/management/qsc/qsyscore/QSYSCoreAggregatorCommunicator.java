@@ -562,10 +562,14 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						(StringUtils.isNullOrEmpty(filterDeviceByName) || filterDeviceByNameSet.contains(device.getKey()))) {
 					AggregatedDevice aggregatedDevice = new AggregatedDevice();
 					aggregatedDevice.setDeviceId(device.getKey());
+					Map<String, String> stats = device.getValue().getStats();
+					if (stats == null || stats.isEmpty()) continue;
 					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
-					aggregatedDevice.setDeviceOnline(deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
+					if (deviceStatus != null) {
+						aggregatedDevice.setDeviceOnline(deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
+					}
 					aggregatedDevice.setDeviceName(device.getKey());
-					aggregatedDevice.setProperties(device.getValue().getStats());
+					aggregatedDevice.setProperties(stats);
 					aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
 					provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
 					aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
@@ -1106,7 +1110,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					errorDeviceMap.remove(deviceId);
 				}
 			} catch (Exception e) {
-				logger.error("Can not retrieve information of aggregated device have id is " + deviceId);
+				logger.error("Can not retrieve information of aggregated device have id is " + deviceId, e);
 			}
 		}
 	}
