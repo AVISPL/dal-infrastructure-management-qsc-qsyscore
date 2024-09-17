@@ -107,7 +107,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (!deviceMap.isEmpty()) {
 				retrieveAggregatedDeviceByIdList(this.deviceIds);
 			}
-			qrcCommandThreshold++;
 		}
 	}
 
@@ -228,10 +227,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private List<AggregatedDevice> aggregatedDeviceList = Collections.synchronizedList(new ArrayList<>());
 
 	/**
-	 * The variable checks if all QRC commands have been sent, and if it reaches 2 (commands sent from the worker thread and main thread),
-	 * we can close the socket connection.
+	 * The variable checks if qrcCommunicator is initial at the first time
 	 */
-	private volatile int qrcCommandThreshold = 0;
+	private volatile boolean isQrcCommunicatorFirstTimeInit = true;
 
 	public QSYSCoreAggregatorCommunicator() {
 		this.setTrustAllCertificates(true);
@@ -412,6 +410,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 				if (qrcCommunicator == null) {
 					initQRCCommunicator();
+					isQrcCommunicatorFirstTimeInit = false;
 				}
 
 				//Create loginInfo
@@ -467,7 +466,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			}
 			isEmergencyDelivery = false;
 		} finally {
-			qrcCommandThreshold += 1;
 			reentrantLock.unlock();
 		}
 
@@ -562,10 +560,14 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						(StringUtils.isNullOrEmpty(filterDeviceByName) || filterDeviceByNameSet.contains(device.getKey()))) {
 					AggregatedDevice aggregatedDevice = new AggregatedDevice();
 					aggregatedDevice.setDeviceId(device.getKey());
+					Map<String, String> stats = device.getValue().getStats();
+					if (stats == null || stats.isEmpty()) continue;
 					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
-					aggregatedDevice.setDeviceOnline(deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
+					if (deviceStatus != null) {
+						aggregatedDevice.setDeviceOnline(deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
+					}
 					aggregatedDevice.setDeviceName(device.getKey());
-					aggregatedDevice.setProperties(device.getValue().getStats());
+					aggregatedDevice.setProperties(stats);
 					aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
 					provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
 					aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
@@ -609,10 +611,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * Reset socket connection for each polling interval
 	 */
 	public void resetSocketConnection() {
-		if (qrcCommandThreshold == 2 && qrcCommunicator != null) {
+		if (!isQrcCommunicatorFirstTimeInit && qrcCommunicator != null) {
 			qrcCommunicator.destroyChannel();
 			qrcCommunicator = null;
-			qrcCommandThreshold = 0;
 		}
 	}
 
@@ -666,8 +667,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			executorService.shutdownNow();
 			executorService = null;
 		}
-		qrcCommunicator = null;
-		qrcCommandThreshold = 0;
+		if (qrcCommunicator != null) {
+			qrcCommunicator.destroyChannel();
+			qrcCommunicator = null;
+		}
+		isQrcCommunicatorFirstTimeInit = true;
 		devicesExecutionPool.forEach(future -> future.cancel(true));
 		devicesExecutionPool.clear();
 		super.internalDestroy();
@@ -1106,7 +1110,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					errorDeviceMap.remove(deviceId);
 				}
 			} catch (Exception e) {
-				logger.error("Can not retrieve information of aggregated device have id is " + deviceId);
+				logger.error("Can not retrieve information of aggregated device have id is " + deviceId, e);
 			}
 		}
 	}
