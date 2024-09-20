@@ -10,7 +10,9 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -20,6 +22,7 @@ import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.dal.BaseDevice;
 import com.avispl.symphony.dal.communicator.Communicator;
 import com.avispl.symphony.dal.communicator.ConnectionStatus;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 
 /**
  * QRCCommunicator is a class that implements the QRCCommunicator interface to provide communication and interaction with a QSys-Core device.
@@ -40,7 +43,7 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 	protected String login;
 	protected String password;
 	protected int numOfResponses = 2;
-	private int socketTimeout = 3000;
+	private int socketTimeout = 30000;
 	private Socket socket;
 	private int port = 1710;
 
@@ -291,9 +294,9 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 
 		String[] response;
 		try {
+			this.numOfResponses = this.status.getConnectionState() == ConnectionState.Connected? 1: 2;
 			response = this.send(data, true);
 		} finally {
-			this.destroyChannel();
 			writeLock.unlock();
 		}
 
@@ -420,22 +423,58 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 
 		// Count number of responses
 		int countResponses = 0;
+		long startTime = System.currentTimeMillis();
+		long timeout = 30 * 1000; // 30s read timeout
 		InputStreamReader inputStreamReader = new InputStreamReader(in);
 		StringBuilder stringBuilder = new StringBuilder();
 
 		do {
-			int x = inputStreamReader.read();
-			stringBuilder.append((char) x);
+			try {
+				int x = inputStreamReader.read();
 
-			// Char '\00' has int value is 0
-			// It is the symbol represents for the end of one response
-			if (x == 0) {
-				countResponses++;
+				if (x == -1) {
+					// Handle end of stream
+					throw new IOException("End of stream reached unexpectedly");
+				}
+
+				stringBuilder.append((char) x);
+
+				// Char '\00' has int value is 0
+				// It is the symbol represents for the end of one response
+				if (x == 0) {
+					countResponses++;
+				}
+
+				// It's necessary to add read timeout to break the loop in case response data do not contain end character
+				if (System.currentTimeMillis() - startTime > timeout) {
+					throw new IOException("Timeout while waiting for response");
+				}
+
+			} catch (IOException e) {
+				logger.error("Error reading response from socket, socket server might close", e);
+				throw new IOException(e.getMessage());
+			} catch (Exception e) {
+				logger.error("Failed to read read response data of command " + command + " with error " + e.getMessage());
+				throw new IOException("Failed to read response data of command " + command);
 			}
 		} while (countResponses != this.numOfResponses);
 
 		String response = stringBuilder.toString();
-		return response.split("\00");
+		return extractResponse(response);
+	}
+
+	/**
+	 * Compose responses data
+	 */
+	private String[] extractResponse(String response) {
+		if (!response.contains("\00")) return new String[0];
+
+		List<String> result = new ArrayList<>();
+		if (this.numOfResponses == 1) {
+			result.add(QSYSCoreConstant.EMPTY);
+		}
+		result.addAll(Arrays.asList(response.split("\00")));
+		return result.toArray(new String[0]);
 	}
 
 	/**

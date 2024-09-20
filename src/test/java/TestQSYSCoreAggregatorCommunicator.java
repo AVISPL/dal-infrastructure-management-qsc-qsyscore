@@ -39,9 +39,10 @@ public class TestQSYSCoreAggregatorCommunicator {
 	@BeforeEach()
 	public void setUp() throws Exception {
 		qSYSCoreCommunicator.setHost("***REMOVED***");
-		qSYSCoreCommunicator.setLogin("technican");
-		qSYSCoreCommunicator.setPassword("12345678");
-		qSYSCoreCommunicator.setPort(80);
+		qSYSCoreCommunicator.setLogin("");
+		qSYSCoreCommunicator.setPassword("");
+		qSYSCoreCommunicator.setPort(443);
+		qSYSCoreCommunicator.setProtocol("https");
 		qSYSCoreCommunicator.init();
 		qSYSCoreCommunicator.connect();
 	}
