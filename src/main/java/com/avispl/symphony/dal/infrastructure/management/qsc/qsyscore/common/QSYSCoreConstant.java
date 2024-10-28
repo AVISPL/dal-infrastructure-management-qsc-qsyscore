@@ -5,6 +5,7 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -60,8 +61,18 @@ public class QSYSCoreConstant {
 	public static final String VIDEO_SOURCE_DEVICE = "vst_hdmi_source";
 	public static final String CONTROL_INTERFACE_DEVICE = "touch_screen_status";
 	public static final String MONITORING_PROXY = "monitoring_proxy";
+	public static final String PLUGIN = "PLUGIN";
+	public static final String SENNHEISER = "Sennheiser";
+	public static final String MIDDLE_ATLANTIC = "MiddleAtlantic";
+	public static final String AUDIO_LEVEL_CURRENT_VALUE = "AudioLevelCurrentValue(dB)";
+	public static final String LED_BRIGHTNESS_CURRENT_VALUE = "LEDBrightnessCurrentValue";
+
+	public static final List<String> SOUND_PROFILE = Arrays.asList("Off", "Custom");
+	public static final List<String> NOISE_LEVEL = Arrays.asList("Quiet", "Normal", "Loud");
+	public static final List<String> ON_COLOR = Arrays.asList("White", "Green", "Blue", "Red", "Yellow", "Orange", "Cyan", "Pink");
 	public static final Set<String> SUPPORTED_DEVICE_TYPE = new HashSet<>(
-			Arrays.asList(CAMERA_DEVICE, PROCESSOR_DEVICE, DISPLAY_DEVICE, STREAM_INPUT_DEVICE, STREAM_OUTPUT_DEVICE, VIDEO_IO_DEVICE, VIDEO_SOURCE_DEVICE, CONTROL_INTERFACE_DEVICE, MONITORING_PROXY));
+			Arrays.asList(CAMERA_DEVICE, PROCESSOR_DEVICE, DISPLAY_DEVICE, STREAM_INPUT_DEVICE, STREAM_OUTPUT_DEVICE, VIDEO_IO_DEVICE, VIDEO_SOURCE_DEVICE, CONTROL_INTERFACE_DEVICE, MONITORING_PROXY,
+					PLUGIN));
 
 	/**
 	 * Token timeout is 1 hour ( 60 minutes), as this case reserve 5 minutes to make sure we never failed because of the timeout

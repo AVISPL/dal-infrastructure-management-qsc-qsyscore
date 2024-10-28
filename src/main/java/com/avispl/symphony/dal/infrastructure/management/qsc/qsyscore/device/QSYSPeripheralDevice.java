@@ -5,6 +5,7 @@
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -147,5 +148,25 @@ public abstract class QSYSPeripheralDevice implements DeviceBehavior {
 			}
 		}
 
+	}
+	/**
+	 * Create switch is control property for metric
+	 *
+	 * @param name the name of property
+	 * @param status initial status (0|1)
+	 * @return AdvancedControllableProperty switch instance
+	 */
+	public AdvancedControllableProperty createSwitch(String name, int status, String labelOff, String labelOn) {
+		AdvancedControllableProperty.Switch toggle = new AdvancedControllableProperty.Switch();
+		toggle.setLabelOff(labelOff);
+		toggle.setLabelOn(labelOn);
+
+		AdvancedControllableProperty advancedControllableProperty = new AdvancedControllableProperty();
+		advancedControllableProperty.setName(name);
+		advancedControllableProperty.setValue(status);
+		advancedControllableProperty.setType(toggle);
+		advancedControllableProperty.setTimestamp(new Date());
+
+		return advancedControllableProperty;
 	}
 }

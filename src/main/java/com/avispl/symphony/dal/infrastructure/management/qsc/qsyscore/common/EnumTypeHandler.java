@@ -68,4 +68,26 @@ public class EnumTypeHandler {
 		}
 		return null;
 	}
+
+	/**
+	 * Get metric name of enum by name
+	 *
+	 * @param enumType the enumType is enum class
+	 * @param name is String
+	 * @return T is metric instance
+	 */
+	public static <T extends Enum<T>> T getPropertiesByName(Class<T> enumType, String name) {
+		try {
+			for (T c : enumType.getEnumConstants()) {
+				Method methodName = c.getClass().getMethod("getMetric");
+				String nameMetric = String.valueOf(methodName.invoke(c));
+				if (nameMetric.equalsIgnoreCase(name)) {
+					return c;
+				}
+			}
+		} catch (Exception e) {
+			return null;
+		}
+		return null;
+	}
 }

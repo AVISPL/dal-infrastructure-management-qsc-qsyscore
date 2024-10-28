@@ -3,33 +3,19 @@
  */
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore;
 
-import java.io.IOException;
 import java.math.RoundingMode;
-import java.net.ConnectException;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.*;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.*;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -48,22 +34,11 @@ import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
-import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.api.dal.monitor.aggregator.Aggregator;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.GainControllingMetric;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreURL;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.CameraDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.ControlInterfaceDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.DisplayDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.MonitoringProxyDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.ProcessorDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.VideoIODevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.VideoSourceDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.streamiodevice.StreamInputDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.streamiodevice.StreamOutputDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.ComponentInfo;
@@ -107,6 +82,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (!deviceMap.isEmpty()) {
 				retrieveAggregatedDeviceByIdList(this.deviceIds);
 			}
+			qrcCommandThreshold++;
 		}
 	}
 
@@ -227,9 +203,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private List<AggregatedDevice> aggregatedDeviceList = Collections.synchronizedList(new ArrayList<>());
 
 	/**
-	 * The variable checks if qrcCommunicator is initial at the first time
+	 * The variable checks if all QRC commands have been sent, and if it reaches 2 (commands sent from the worker thread and main thread),
+	 * we can close the socket connection.
 	 */
-	private volatile boolean isQrcCommunicatorFirstTimeInit = true;
+	private volatile int qrcCommandThreshold = 0;
 
 	public QSYSCoreAggregatorCommunicator() {
 		this.setTrustAllCertificates(true);
@@ -347,45 +324,45 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		this.pollingInterval = pollingInterval;
 	}
 
-	/**
-	 * @return pingTimeout value if host is not reachable within
-	 * the pingTimeout, a ping time in milliseconds otherwise
-	 * if ping is 0ms it's rounded up to 1ms to avoid IU issues on Symphony portal
-	 */
-	@Override
-	public int ping() throws IOException {
-		long pingResultTotal = 0L;
-
-		for (int i = 0; i < this.getPingAttempts(); i++) {
-			long startTime = System.currentTimeMillis();
-
-			try (Socket puSocketConnection = new Socket(this.getHost(), this.getPort())) {
-				puSocketConnection.setSoTimeout(this.getPingTimeout());
-
-				if (puSocketConnection.isConnected()) {
-					long endTime = System.currentTimeMillis();
-					long pingResult = endTime - startTime;
-					pingResultTotal += pingResult;
-					if (this.logger.isTraceEnabled()) {
-						this.logger.trace(String.format("PING OK: Attempt #%s to connect to %s on port %s succeeded in %s ms", i + 1, this.getHost(), this.getPort(), pingResult));
-					}
-				} else {
-					if (this.logger.isDebugEnabled()) {
-						this.logger.debug(String.format("PING DISCONNECTED: Connection to %s did not succeed within the timeout period of %sms", this.getHost(), this.getPingTimeout()));
-					}
-					return this.getPingTimeout();
-				}
-			} catch (SocketTimeoutException | ConnectException tex) {
-				throw new RuntimeException("Socket connection timed out", tex);
-			} catch (Exception e) {
-				if (this.logger.isWarnEnabled()) {
-					this.logger.warn(String.format("PING TIMEOUT: Connection to %s did not succeed, UNKNOWN ERROR %s: ", host, e.getMessage()));
-				}
-				return this.getPingTimeout();
-			}
-		}
-		return Math.max(1, Math.toIntExact(pingResultTotal / this.getPingAttempts()));
-	}
+//    /**
+//     * @return pingTimeout value if host is not reachable within
+//     * the pingTimeout, a ping time in milliseconds otherwise
+//     * if ping is 0ms it's rounded up to 1ms to avoid IU issues on Symphony portal
+//     */
+//    @Override
+//    public int ping() throws IOException {
+//        long pingResultTotal = 0L;
+//
+//        for (int i = 0; i < this.getPingAttempts(); i++) {
+//            long startTime = System.currentTimeMillis();
+//
+//            try (Socket puSocketConnection = new Socket(this.getHost(), this.getPort())) {
+//                puSocketConnection.setSoTimeout(this.getPingTimeout());
+//
+//                if (puSocketConnection.isConnected()) {
+//                    long endTime = System.currentTimeMillis();
+//                    long pingResult = endTime - startTime;
+//                    pingResultTotal += pingResult;
+//                    if (this.logger.isTraceEnabled()) {
+//                        this.logger.trace(String.format("PING OK: Attempt #%s to connect to %s on port %s succeeded in %s ms", i + 1, this.getHost(), this.getPort(), pingResult));
+//                    }
+//                } else {
+//                    if (this.logger.isDebugEnabled()) {
+//                        this.logger.debug(String.format("PING DISCONNECTED: Connection to %s did not succeed within the timeout period of %sms", this.getHost(), this.getPingTimeout()));
+//                    }
+//                    return this.getPingTimeout();
+//                }
+//            } catch (SocketTimeoutException | ConnectException tex) {
+//                throw new RuntimeException("Socket connection timed out", tex);
+//            } catch (Exception e) {
+//                if (this.logger.isWarnEnabled()) {
+//                    this.logger.warn(String.format("PING TIMEOUT: Connection to %s did not succeed, UNKNOWN ERROR %s: ", host, e.getMessage()));
+//                }
+//                return this.getPingTimeout();
+//            }
+//        }
+//        return Math.max(1, Math.toIntExact(pingResultTotal / this.getPingAttempts()));
+//    }
 
 	/**
 	 * {@inheritDoc}
@@ -410,7 +387,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 				if (qrcCommunicator == null) {
 					initQRCCommunicator();
-					isQrcCommunicatorFirstTimeInit = false;
 				}
 
 				//Create loginInfo
@@ -459,13 +435,13 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 
 				populateAggregatedMonitoringData(currentSizeDeviceMap);
-
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setControllableProperties(controllableProperties);
 				localExtStats = extendedStatistics;
 			}
 			isEmergencyDelivery = false;
 		} finally {
+			qrcCommandThreshold += 1;
 			reentrantLock.unlock();
 		}
 
@@ -495,34 +471,115 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (qrcCommunicator == null) {
 				initQRCCommunicator();
 			}
-
 			String property = controllableProperty.getProperty();
 			String value = String.valueOf(controllableProperty.getValue());
-
+			String deviceId = controllableProperty.getDeviceId();
 			if (this.logger.isDebugEnabled()) {
 				this.logger.debug("controlProperty property " + property);
 				this.logger.debug("controlProperty value " + value);
 			}
 
-			String[] splitProperty = property.split(QSYSCoreConstant.HASH);
+			if (StringUtils.isNotNullOrEmpty(deviceId)) {
+				mapOfIdAndAggregatedDeviceList.entrySet().stream().filter(device -> device.getKey().equalsIgnoreCase(deviceId)).filter(device -> "Plugin".equalsIgnoreCase(device.getValue().getType()))
+						.findFirst().ifPresent(device -> {
+							if (deviceId.contains("Sennheiser")) {
+								SennheiserDeviceMetric sennheiserDevice = EnumTypeHandler.getPropertiesByName(SennheiserDeviceMetric.class, property);
+								switch (sennheiserDevice) {
+									case AUDIO_LEVEL:
+										populateSennheiserControl(deviceId, property, value);
+										device.getValue().getStats().put(QSYSCoreConstant.AUDIO_LEVEL_CURRENT_VALUE, value);
+										break;
+									case LED_BRIGHTNESS:
+										populateSennheiserControl(deviceId, property, value);
+										device.getValue().getStats().put(QSYSCoreConstant.LED_BRIGHTNESS_CURRENT_VALUE, value);
+										break;
+									case MUTE_COLOR:
+									case ON_COLOR:
+									case NOISE_LEVEL:
+									case SOUND_PROFILE:
+										String result = "\"" + value + "\"";
+										populateSennheiserControl(deviceId, property, result);
+										break;
+									default:
+										populateSennheiserControl(deviceId, property, value);
+										break;
+								}
+							} else if (deviceId.contains("MiddleAtlantic")) {
+								populateMiddleAtlanticControl(deviceId, property, value);
+							}
+						});
 
-			// Ex: Gain:Named Component#Gain Value Control
-			// metricName = Gain Value Control
-			// namedComponent = Named Component
-			String metricName = splitProperty[1];
-			List<String> splitComponent = Arrays.asList(splitProperty[0].split(QSYSCoreConstant.COLON, 2));
-			switch (splitComponent.get(0)) {
-				case QSYSCoreConstant.GAIN:
-					String gainComponent = splitComponent.size() > 1 ? splitComponent.get(1) : splitComponent.get(0);
-					gainControl(metricName, gainComponent, value);
-					updateGainControlByMetricName(metricName, value, property);
-					break;
-				default:
-					logger.debug("Component Name doesn't support: " + metricName);
+			} else {
+				String[] splitProperty = property.split(QSYSCoreConstant.HASH);
+
+				// Ex: Gain:Named Component#Gain Value Control
+				// metricName = Gain Value Control
+				// namedComponent = Named Component
+				String metricName = splitProperty[1];
+				List<String> splitComponent = Arrays.asList(splitProperty[0].split(QSYSCoreConstant.COLON, 2));
+				switch (splitComponent.get(0)) {
+					case QSYSCoreConstant.GAIN:
+						String gainComponent = splitComponent.size() > 1 ? splitComponent.get(1) : splitComponent.get(0);
+						gainControl(metricName, gainComponent, value);
+						updateGainControlByMetricName(metricName, value, property);
+						break;
+					default:
+						logger.debug("Component Name doesn't support: " + metricName);
+				}
 			}
 			TimeUnit.MILLISECONDS.sleep(500);
 		} finally {
 			reentrantLock.unlock();
+		}
+	}
+
+	/**
+	 * Populate send sennheiser control
+	 *
+	 * @param metricName is the name of device
+	 * @param property is property name of device
+	 * @param value is value to send command
+	 */
+	private void populateSennheiserControl(String metricName, String property, String value) {
+		RpcMethod method = RpcMethod.SET_CONTROLS;
+		String request = String.format(RpcMethod.getRequest(), method.getName(), RpcMethod.getParamsString(method));
+		request = String.format(request, metricName, SennheiserDeviceMetric.getByMetric(property).getProperty(), value);
+		try {
+			List<String> response = Arrays.asList(qrcCommunicator.send(request));
+			if (response.size() > 1) {
+				JsonNode responseControl = objectMapper.readValue(response.get(1), JsonNode.class);
+
+				if (!responseControl.has(QSYSCoreConstant.RESULT) || !responseControl.get(QSYSCoreConstant.RESULT).asText().equals(QSYSCoreConstant.TRUE)) {
+					throw new IllegalStateException("Error: cannot set Sennheiser device value " + property);
+				}
+			}
+		} catch (Exception e) {
+			throw new ResourceNotReachableException("Error when control " + property + " device", e);
+		}
+	}
+
+	/**
+	 * Populate send MiddleAtlantic control
+	 *
+	 * @param metricName is the name of device
+	 * @param property is property name of device
+	 * @param value is value to send command
+	 */
+	private void populateMiddleAtlanticControl(String metricName, String property, String value) {
+		RpcMethod method = RpcMethod.SET_CONTROLS;
+		String request = String.format(RpcMethod.getRequest(), method.getName(), RpcMethod.getParamsString(method));
+		request = String.format(request, metricName, MiddleAtlanticMetric.getByMetric(property).getProperty(), value);
+		try {
+			List<String> response = Arrays.asList(qrcCommunicator.send(request));
+			if (response.size() > 1) {
+				JsonNode responseControl = objectMapper.readValue(response.get(1), JsonNode.class);
+
+				if (!responseControl.has(QSYSCoreConstant.RESULT) || !responseControl.get(QSYSCoreConstant.RESULT).asText().equals(QSYSCoreConstant.TRUE)) {
+					throw new IllegalStateException("Error: cannot set middle atlantic value " + property);
+				}
+			}
+		} catch (Exception e) {
+			throw new ResourceNotReachableException("Error when control " + property, e);
 		}
 	}
 
@@ -556,18 +613,14 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		}
 		synchronized (mapOfIdAndAggregatedDeviceList) {
 			for (Entry<String, QSYSPeripheralDevice> device : mapOfIdAndAggregatedDeviceList.entrySet()) {
-				if ((StringUtils.isNullOrEmpty(filterDeviceByQSYSType) || filterDeviceByQSYSTypeSet.contains(device.getValue().getType())) &&
-						(StringUtils.isNullOrEmpty(filterDeviceByName) || filterDeviceByNameSet.contains(device.getKey()))) {
+				if ((StringUtils.isNullOrEmpty(filterDeviceByQSYSType) || filterDeviceByQSYSTypeSet.contains(device.getValue().getType())) && (StringUtils.isNullOrEmpty(filterDeviceByName)
+						|| filterDeviceByNameSet.contains(device.getKey()))) {
 					AggregatedDevice aggregatedDevice = new AggregatedDevice();
 					aggregatedDevice.setDeviceId(device.getKey());
-					Map<String, String> stats = device.getValue().getStats();
-					if (stats == null || stats.isEmpty()) continue;
 					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
-					if (deviceStatus != null) {
-						aggregatedDevice.setDeviceOnline(deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
-					}
+					aggregatedDevice.setDeviceOnline(deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
 					aggregatedDevice.setDeviceName(device.getKey());
-					aggregatedDevice.setProperties(stats);
+					aggregatedDevice.setProperties(device.getValue().getStats());
 					aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
 					provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
 					aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
@@ -611,9 +664,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * Reset socket connection for each polling interval
 	 */
 	public void resetSocketConnection() {
-		if (!isQrcCommunicatorFirstTimeInit && qrcCommunicator != null) {
+		if (qrcCommandThreshold == 2 && qrcCommunicator != null) {
 			qrcCommunicator.destroyChannel();
 			qrcCommunicator = null;
+			qrcCommandThreshold = 0;
 		}
 	}
 
@@ -654,24 +708,23 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		deviceMap.clear();
 		loginInfo = null;
 		localPollingInterval = 0;
-		if (localExtStats.getStatistics() != null) {
-			localExtStats.getStatistics().clear();
-		}
-		if (localExtStats.getDynamicStatistics() != null) {
-			localExtStats.getDynamicStatistics().clear();
-		}
-		if (localExtStats.getControllableProperties() != null) {
-			localExtStats.getControllableProperties().clear();
+		if (localExtStats != null) {
+			if (localExtStats.getStatistics() != null) {
+				localExtStats.getStatistics().clear();
+			}
+			if (localExtStats.getDynamicStatistics() != null) {
+				localExtStats.getDynamicStatistics().clear();
+			}
+			if (localExtStats.getControllableProperties() != null) {
+				localExtStats.getControllableProperties().clear();
+			}
 		}
 		if (executorService != null) {
 			executorService.shutdownNow();
 			executorService = null;
 		}
-		if (qrcCommunicator != null) {
-			qrcCommunicator.destroyChannel();
-			qrcCommunicator = null;
-		}
-		isQrcCommunicatorFirstTimeInit = true;
+		qrcCommunicator = null;
+		qrcCommandThreshold = 0;
 		devicesExecutionPool.forEach(future -> future.cancel(true));
 		devicesExecutionPool.clear();
 		super.internalDestroy();
@@ -706,9 +759,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * @throws ResourceNotReachableException when failedMonitor said all device monitoring data are failed to get
 	 */
 	private void populateQSYSAggregatorMonitoringData(Map<String, String> stats) throws Exception {
-		retrieveQSYSAggregatorInfo(stats);
-		retrieveQSYSAggregatorNetworkInfo(stats);
-		retrieveQSYSAggregatorDesign(stats);
+//		retrieveQSYSAggregatorInfo(stats);
+//		retrieveQSYSAggregatorNetworkInfo(stats);
+//		retrieveQSYSAggregatorDesign(stats);
 	}
 
 	/**
@@ -828,7 +881,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 							retrieveGainComponent(stats, controllableProperties, componentInfo.getId());
 							continue;
 						}
-						if (localPollingInterval == 0 && componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType())) {
+						if (localPollingInterval == 0 && componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType()) || componentInfo.getType()
+								.contains(QSYSCoreConstant.PLUGIN)) {
 							retrieveDevice(existDeviceSet, componentInfo);
 						}
 					}
@@ -865,8 +919,17 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			return;
 		}
 		existDeviceSet.add(componentInfo.getId());
-		QSYSPeripheralDevice device = createDeviceByType(componentInfo.getType());
-		device.setType(componentInfo.getType());
+		QSYSPeripheralDevice device;
+		if (componentInfo.getId() != null && componentInfo.getId().toLowerCase(Locale.ROOT).contains(QSYSCoreConstant.SENNHEISER.toLowerCase(Locale.ROOT))) {
+			device = new SennheiserDevice();
+			device.setType(QSYSCoreConstant.PLUGIN);
+		} else if (componentInfo.getId() != null && componentInfo.getId().toLowerCase(Locale.ROOT).contains(QSYSCoreConstant.MIDDLE_ATLANTIC.toLowerCase(Locale.ROOT))) {
+			device = new MiddleAtlanticDevice();
+			device.setType(QSYSCoreConstant.PLUGIN);
+		} else {
+			device = createDeviceByType(componentInfo.getType());
+			device.setType(componentInfo.getType());
+		}
 		if (device != null && !deviceMap.containsKey(componentInfo.getId())) {
 			deviceMap.put(componentInfo.getId(), device);
 		}
@@ -1044,30 +1107,30 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		ObjectNode request = JsonNodeFactory.instance.objectNode();
 		request.put(QSYSCoreConstant.USERNAME, login);
 		request.put(QSYSCoreConstant.PASSWORD, password);
-		try {
-			if (this.loginInfo.isTimeout() || this.loginInfo.getToken() == null) {
-				JsonNode responseData = doPost(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.TOKEN), request, JsonNode.class);
-				if (responseData != null) {
-					String token = responseData.get(QSYSCoreConstant.TOKEN).asText();
-					if (token != null) {
-						this.loginInfo.setToken(token);
-						this.loginInfo.setLoginDateTime(System.currentTimeMillis());
-					} else {
-						this.loginInfo.setToken(null);
-					}
-				} else {
-					this.loginInfo.setToken(null);
-				}
-			}
-		} catch (CommandFailureException e) {
-			if (!StringUtils.isNullOrEmpty(getPassword()) && !StringUtils.isNullOrEmpty(getLogin())) {
-				throw new FailedLoginException("Unable to login. Please check device credentials");
-			}
-			this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
-			this.loginInfo.setLoginDateTime(System.currentTimeMillis());
-		} catch (Exception e) {
-			throw new ResourceNotReachableException("Unable to retrieve the authorization token, endpoint not reachable", e);
-		}
+//		try {
+//			if (this.loginInfo.isTimeout() || this.loginInfo.getToken() == null) {
+//				JsonNode responseData = doPost(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.TOKEN), request, JsonNode.class);
+//				if (responseData != null) {
+//					String token = responseData.get(QSYSCoreConstant.TOKEN).asText();
+//					if (token != null) {
+//						this.loginInfo.setToken(token);
+//						this.loginInfo.setLoginDateTime(System.currentTimeMillis());
+//					} else {
+//						this.loginInfo.setToken(null);
+//					}
+//				} else {
+//					this.loginInfo.setToken(null);
+//				}
+//			}
+//		} catch (CommandFailureException e) {
+//			if (!StringUtils.isNullOrEmpty(getPassword()) && !StringUtils.isNullOrEmpty(getLogin())) {
+//				throw new FailedLoginException("Unable to login. Please check device credentials");
+//			}
+//			this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
+//			this.loginInfo.setLoginDateTime(System.currentTimeMillis());
+//		} catch (Exception e) {
+//			throw new ResourceNotReachableException("Unable to retrieve the authorization token, endpoint not reachable", e);
+//		}
 	}
 
 	/**
@@ -1110,7 +1173,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					errorDeviceMap.remove(deviceId);
 				}
 			} catch (Exception e) {
-				logger.error("Can not retrieve information of aggregated device have id is " + deviceId, e);
+				logger.error("Can not retrieve information of aggregated device have id is " + deviceId);
 			}
 		}
 	}
@@ -1221,6 +1284,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			case QSYSCoreConstant.VIDEO_SOURCE_DEVICE:
 				return QSYSCoreConstant.VIDEO_SOURCE_TYPE;
 			case QSYSCoreConstant.MONITORING_PROXY:
+			case QSYSCoreConstant.PLUGIN:
 				return QSYSCoreConstant.MONITORING_PROXY_TYPE;
 			case QSYSCoreConstant.DISPLAY_DEVICE:
 				return QSYSCoreConstant.DISPLAY_TYPE;
