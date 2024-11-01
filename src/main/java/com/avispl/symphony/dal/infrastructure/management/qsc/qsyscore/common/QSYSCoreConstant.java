@@ -63,6 +63,8 @@ public class QSYSCoreConstant {
 	public static final String MONITORING_PROXY = "monitoring_proxy";
 	public static final String PLUGIN = "PLUGIN";
 	public static final String SENNHEISER = "Sennheiser";
+	public static final String DATA_PROBE = "Dataprobe";
+	public static final String NETGEAR = "NetgearAVLineSwitch";
 	public static final String MIDDLE_ATLANTIC = "MiddleAtlantic";
 	public static final String AUDIO_LEVEL_CURRENT_VALUE = "AudioLevelCurrentValue(dB)";
 	public static final String LED_BRIGHTNESS_CURRENT_VALUE = "LEDBrightnessCurrentValue";

@@ -423,17 +423,35 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 
 		// Count number of responses
 		int countResponses = 0;
+		long startTime = System.currentTimeMillis();
+		long timeout = 30 * 1000; // 30s read timeout
 		InputStreamReader inputStreamReader = new InputStreamReader(in);
 		StringBuilder stringBuilder = new StringBuilder();
 
 		do {
-			int x = inputStreamReader.read();
-			stringBuilder.append((char) x);
+			try {
+				int x = inputStreamReader.read();
+				if (x == -1) {
+					// Handle end of stream
+					throw new IOException("End of stream reached unexpectedly");
+				}
 
-			// Char '\00' has int value is 0
-			// It is the symbol represents for the end of one response
-			if (x == 0) {
-				countResponses++;
+				stringBuilder.append((char) x);
+				// Char '\00' has int value is 0
+				// It is the symbol represents for the end of one response
+				if (x == 0) {
+					countResponses++;
+				}
+				// It's necessary to add read timeout to break the loop in case response data do not contain end character
+				if (System.currentTimeMillis() - startTime > timeout) {
+					throw new IOException("Timeout while waiting for response");
+				}
+			} catch (IOException e) {
+				logger.error("Error reading response from socket, socket server might close", e);
+				throw new IOException(e.getMessage());
+			} catch (Exception e) {
+				logger.error("Failed to read read response data of command " + command + " with error " + e.getMessage());
+				throw new IOException("Failed to read response data of command " + command);
 			}
 		} while (countResponses != this.numOfResponses);
 
@@ -445,6 +463,8 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 	 * Compose responses data
 	 */
 	private String[] extractResponse(String response) {
+
+		if (!response.contains("\00")) return new String[0];
 		List<String> result = new ArrayList<>();
 		if (this.numOfResponses == 1) {
 			result.add(QSYSCoreConstant.EMPTY);

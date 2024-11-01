@@ -3,7 +3,11 @@
  */
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore;
 
+import java.io.IOException;
 import java.math.RoundingMode;
+import java.net.ConnectException;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Map.Entry;
@@ -14,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.*;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.*;
 
@@ -208,6 +213,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private volatile int qrcCommandThreshold = 0;
 
+	/**
+	 * The variable checks if qrcCommunicator is initial at the first time
+	 */
+	private volatile boolean isQrcCommunicatorFirstTimeInit = true;
+
 	public QSYSCoreAggregatorCommunicator() {
 		this.setTrustAllCertificates(true);
 	}
@@ -387,6 +397,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 				if (qrcCommunicator == null) {
 					initQRCCommunicator();
+					isQrcCommunicatorFirstTimeInit = false;
 				}
 
 				//Create loginInfo
@@ -505,10 +516,34 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 										break;
 								}
 							} else if (deviceId.contains("MiddleAtlantic")) {
-								populateMiddleAtlanticControl(deviceId, property, value);
+								MiddleAtlanticMetric middleAtlantic = EnumTypeHandler.getPropertiesByName(MiddleAtlanticMetric.class, property);
+								switch (middleAtlantic) {
+									case OUTLET_1_NAME:
+									case OUTLET_2_NAME:
+									case OUTLET_3_NAME:
+									case OUTLET_4_NAME:
+									case OUTLET_5_NAME:
+									case OUTLET_6_NAME:
+									case OUTLET_7_NAME:
+									case OUTLET_8_NAME:
+									case OUTLET_1_CYCLE:
+									case OUTLET_2_CYCLE:
+									case OUTLET_3_CYCLE:
+									case OUTLET_4_CYCLE:
+									case OUTLET_5_CYCLE:
+									case OUTLET_6_CYCLE:
+									case OUTLET_7_CYCLE:
+									case OUTLET_8_CYCLE:
+									case RESTART_UPS_DELAY_TIME:
+										String result = "\"" + value + "\"";
+										populateMiddleAtlanticControl(deviceId, property, result);
+										break;
+									default:
+										populateMiddleAtlanticControl(deviceId, property, value);
+										break;
+								}
 							}
 						});
-
 			} else {
 				String[] splitProperty = property.split(QSYSCoreConstant.HASH);
 
@@ -618,8 +653,13 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					AggregatedDevice aggregatedDevice = new AggregatedDevice();
 					aggregatedDevice.setDeviceId(device.getKey());
 					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
-					aggregatedDevice.setDeviceOnline(deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
-					aggregatedDevice.setDeviceName(device.getKey());
+					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.OK_STATUS.equals(deviceStatus));
+					String deviceName = device.getKey();
+					if (aggregatedDevice.getDeviceId().contains("Sennheiser")) {
+						deviceName = aggregatedDevice.getProperties().get(SennheiserDeviceMetric.DEVICE.getMetric());
+						aggregatedDevice.getProperties().remove(SennheiserDeviceMetric.DEVICE.getMetric());
+					}
+					aggregatedDevice.setDeviceName(deviceName);
 					aggregatedDevice.setProperties(device.getValue().getStats());
 					aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
 					provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
@@ -664,7 +704,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * Reset socket connection for each polling interval
 	 */
 	public void resetSocketConnection() {
-		if (qrcCommandThreshold == 2 && qrcCommunicator != null) {
+		if (!isQrcCommunicatorFirstTimeInit && qrcCommunicator != null) {
 			qrcCommunicator.destroyChannel();
 			qrcCommunicator = null;
 			qrcCommandThreshold = 0;
@@ -723,8 +763,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			executorService.shutdownNow();
 			executorService = null;
 		}
-		qrcCommunicator = null;
-		qrcCommandThreshold = 0;
+		if (qrcCommunicator != null) {
+			qrcCommunicator.destroyChannel();
+			qrcCommunicator = null;
+		}
+		isQrcCommunicatorFirstTimeInit = true;
 		devicesExecutionPool.forEach(future -> future.cancel(true));
 		devicesExecutionPool.clear();
 		super.internalDestroy();
@@ -925,6 +968,12 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			device.setType(QSYSCoreConstant.PLUGIN);
 		} else if (componentInfo.getId() != null && componentInfo.getId().toLowerCase(Locale.ROOT).contains(QSYSCoreConstant.MIDDLE_ATLANTIC.toLowerCase(Locale.ROOT))) {
 			device = new MiddleAtlanticDevice();
+			device.setType(QSYSCoreConstant.PLUGIN);
+		} else if (componentInfo.getId() != null && componentInfo.getId().toLowerCase(Locale.ROOT).contains(QSYSCoreConstant.DATA_PROBE.toLowerCase(Locale.ROOT))) {
+			device = new PDUDevice();
+			device.setType(QSYSCoreConstant.PLUGIN);
+		} else if (componentInfo.getId() != null && componentInfo.getId().toLowerCase(Locale.ROOT).contains(QSYSCoreConstant.NETGEAR.toLowerCase(Locale.ROOT))) {
+			device = new NetgearAVLineSwitchDevice();
 			device.setType(QSYSCoreConstant.PLUGIN);
 		} else {
 			device = createDeviceByType(componentInfo.getType());

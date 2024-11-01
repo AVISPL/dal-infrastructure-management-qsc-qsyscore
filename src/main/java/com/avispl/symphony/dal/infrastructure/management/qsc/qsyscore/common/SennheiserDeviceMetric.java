@@ -32,11 +32,11 @@ public enum SennheiserDeviceMetric {
 	VERTICAL_ANGLE("VerticalAngle", "VerticalAngle"),
 	TRU_VOICE_LIFT("TruVoicelift", "TruVoicelift"),
 	ON_COLOR("OnColor", "OnColor"),
-	EXCLUSION_1_ZONES("Exclusion1Zones", "ExclusionZones 1"),
-	EXCLUSION_2_ZONES("Exclusion2Zones", "ExclusionZones 2"),
-	EXCLUSION_3_ZONES("Exclusion3Zones", "ExclusionZones 3"),
-	EXCLUSION_4_ZONES("Exclusion4Zones", "ExclusionZones 4"),
-	EXCLUSION_5_ZONES("Exclusion5Zones", "ExclusionZones 5"),
+	EXCLUSION_1_ZONES("ExclusionZone1", "ExclusionZones 1"),
+	EXCLUSION_2_ZONES("ExclusionZone2", "ExclusionZones 2"),
+	EXCLUSION_3_ZONES("ExclusionZone3", "ExclusionZones 3"),
+	EXCLUSION_4_ZONES("ExclusionZone4", "ExclusionZones 4"),
+	EXCLUSION_5_ZONES("ExclusionZone5", "ExclusionZones 5"),
 	NOISE_LEVEL("RoomNoiseLevel", "NoiseLevel");
 
 	private final String metric;

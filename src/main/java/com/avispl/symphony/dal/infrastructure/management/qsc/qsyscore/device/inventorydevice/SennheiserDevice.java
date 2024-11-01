@@ -39,7 +39,7 @@ public class SennheiserDevice extends QSYSPeripheralDevice {
 					case AUDIO_LEVEL:
 						value = value.substring(0, value.indexOf("dB"));
 						this.getStats().put(sennheiserDeviceMetric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
-						this.getAdvancedControllableProperties().add(ControllablePropertyFactory.createSlider(sennheiserDeviceMetric.getMetric(), -120f, 12f, Float.parseFloat(value)));
+						this.getAdvancedControllableProperties().add(ControllablePropertyFactory.createSlider(sennheiserDeviceMetric.getMetric(), -120f, 20f, Float.parseFloat(value)));
 						this.getStats().put(QSYSCoreConstant.AUDIO_LEVEL_CURRENT_VALUE, StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 						break;
 					case LED_BRIGHTNESS:

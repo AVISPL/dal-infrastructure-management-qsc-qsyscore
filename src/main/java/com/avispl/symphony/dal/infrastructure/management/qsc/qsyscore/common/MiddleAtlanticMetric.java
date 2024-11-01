@@ -50,7 +50,7 @@ public enum MiddleAtlanticMetric {
 
     // Control properties
     RESTART_UPS("RestartUPS", "RestartUPS"),
-    RESTART_UPS_DELAY_TIME("RestartUPSDelayTime", "RestartUPSDelayTime"),
+    RESTART_UPS_DELAY_TIME("RestartUPSDelayTime(s)", "RestartUPSDelayTime"),
     OUTLET_1_CYCLE("Outlet1#Cycle", "Outlet1Cycle"),
     OUTLET_1_CYCLE_TIME("Outlet1#CycleTime", "Outlet1CycleTime"),
     OUTLET_1_POWER("Outlet1#Power", "Outlet1Power"),
