@@ -62,12 +62,12 @@ public class QSYSCoreConstant {
 	public static final String CONTROL_INTERFACE_DEVICE = "touch_screen_status";
 	public static final String MONITORING_PROXY = "monitoring_proxy";
 	public static final String PLUGIN = "PLUGIN";
-	public static final String SENNHEISER = "Sennheiser";
-	public static final String DATA_PROBE = "Dataprobe";
-	public static final String NETGEAR = "NetgearAVLineSwitch";
-	public static final String MIDDLE_ATLANTIC = "MiddleAtlantic";
+	public static final String SENNHEISER = "SennheiserTeamConnectCeiling";
+	public static final String NETGEAR = "EnterpriseManagerNetgearAVLineSwitch";
+	public static final String MIDDLE_ATLANTIC = "MiddleAtlanticNEXSYSUPS";
 	public static final String AUDIO_LEVEL_CURRENT_VALUE = "AudioLevelCurrentValue(dB)";
 	public static final String LED_BRIGHTNESS_CURRENT_VALUE = "LEDBrightnessCurrentValue";
+	public static final String DASH = "-";
 
 	public static final List<String> SOUND_PROFILE = Arrays.asList("Off", "Custom");
 	public static final List<String> NOISE_LEVEL = Arrays.asList("Quiet", "Normal", "Loud");
@@ -75,7 +75,7 @@ public class QSYSCoreConstant {
 	public static final Set<String> SUPPORTED_DEVICE_TYPE = new HashSet<>(
 			Arrays.asList(CAMERA_DEVICE, PROCESSOR_DEVICE, DISPLAY_DEVICE, STREAM_INPUT_DEVICE, STREAM_OUTPUT_DEVICE, VIDEO_IO_DEVICE, VIDEO_SOURCE_DEVICE, CONTROL_INTERFACE_DEVICE, MONITORING_PROXY,
 					PLUGIN));
-
+	public static final List<String> PLUGIN_LIST = Arrays.asList(SENNHEISER, MIDDLE_ATLANTIC, NETGEAR);
 	/**
 	 * Token timeout is 1 hour ( 60 minutes), as this case reserve 5 minutes to make sure we never failed because of the timeout
 	 */
@@ -115,4 +115,6 @@ public class QSYSCoreConstant {
 	public static final String SECONDS = "second(s)";
 
 	public static final Integer MAX_ERROR_COUNT = 2;
+	public static final int MIN_CYCLE_TIME = 1;
+	public static final int MAX_CYCLE_TIME = 60;
 }

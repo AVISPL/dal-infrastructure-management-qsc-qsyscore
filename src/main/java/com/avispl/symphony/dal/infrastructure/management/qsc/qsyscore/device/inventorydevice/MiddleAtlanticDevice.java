@@ -45,6 +45,8 @@ public class MiddleAtlanticDevice extends QSYSPeripheralDevice {
                     case OUTLET_6_CYCLE_TIME:
                     case OUTLET_7_CYCLE_TIME:
                     case OUTLET_8_CYCLE_TIME:
+                        this.getAdvancedControllableProperties().add(ControllablePropertyFactory.createNumeric(middleAtlanticMetric.getMetric(), value));
+                        break;
                     case OUTLET_1_NAME:
                     case OUTLET_2_NAME:
                     case OUTLET_3_NAME:

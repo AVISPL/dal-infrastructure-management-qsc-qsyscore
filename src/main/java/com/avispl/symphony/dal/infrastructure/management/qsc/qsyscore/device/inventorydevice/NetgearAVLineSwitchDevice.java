@@ -27,12 +27,30 @@ public class NetgearAVLineSwitchDevice extends QSYSPeripheralDevice {
 		this.getAdvancedControllableProperties().clear();
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
-				NetgearDeviceMetric NetgearDeviceMetric = EnumTypeHandler.getMetricByName(NetgearDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
-				if (NetgearDeviceMetric == null) {
+				NetgearDeviceMetric netgearDeviceMetric = EnumTypeHandler.getMetricByName(NetgearDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
+				if (netgearDeviceMetric == null) {
 					continue;
 				}
 				String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
-				this.getStats().put(NetgearDeviceMetric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
+				switch (netgearDeviceMetric) {
+					case PORT_1:
+					case PORT_2:
+					case PORT_3:
+					case PORT_4:
+					case PORT_5:
+					case PORT_6:
+					case PORT_7:
+					case PORT_8:
+					case PORT_9:
+					case PORT_10:
+					case PORT_11:
+					case PORT_12:
+						this.getStats().put(netgearDeviceMetric.getMetric(), StringUtils.isNotNullOrEmpty(value) && !QSYSCoreConstant.DEFAUL_DATA.equals(value) ? value : "");
+						break;
+					default:
+						this.getStats().put(netgearDeviceMetric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
+						break;
+				}
 			}
 			super.updateStatusMessage();
 		}

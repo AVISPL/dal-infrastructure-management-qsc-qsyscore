@@ -18,7 +18,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.*;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.*;
 
@@ -87,7 +86,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (!deviceMap.isEmpty()) {
 				retrieveAggregatedDeviceByIdList(this.deviceIds);
 			}
-			qrcCommandThreshold++;
 		}
 	}
 
@@ -121,6 +119,16 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private boolean isEmergencyDelivery = false;
 	private LoginInfo loginInfo;
 	private ExtendedStatistics localExtStats;
+
+	/**
+	 * Filter by plugin name
+	 */
+	private String filterPluginByName;
+
+	/**
+	 * store plugin name
+	 */
+	private Set<String> filterPluginByNameSet;
 
 	/**
 	 * Filter gain by name
@@ -208,12 +216,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private List<AggregatedDevice> aggregatedDeviceList = Collections.synchronizedList(new ArrayList<>());
 
 	/**
-	 * The variable checks if all QRC commands have been sent, and if it reaches 2 (commands sent from the worker thread and main thread),
-	 * we can close the socket connection.
-	 */
-	private volatile int qrcCommandThreshold = 0;
-
-	/**
 	 * The variable checks if qrcCommunicator is initial at the first time
 	 */
 	private volatile boolean isQrcCommunicatorFirstTimeInit = true;
@@ -280,6 +282,14 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		this.filterGainComponentByName = filterGainComponentByName;
 	}
 
+	public String getFilterPluginByName() {
+		return filterPluginByName;
+	}
+
+	public void setFilterPluginByName(String filterPluginByName) {
+		this.filterPluginByName = filterPluginByName;
+	}
+
 	/**
 	 * Retrieves {@link #filterDeviceByQSYSType}
 	 *
@@ -334,45 +344,45 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		this.pollingInterval = pollingInterval;
 	}
 
-//    /**
-//     * @return pingTimeout value if host is not reachable within
-//     * the pingTimeout, a ping time in milliseconds otherwise
-//     * if ping is 0ms it's rounded up to 1ms to avoid IU issues on Symphony portal
-//     */
-//    @Override
-//    public int ping() throws IOException {
-//        long pingResultTotal = 0L;
-//
-//        for (int i = 0; i < this.getPingAttempts(); i++) {
-//            long startTime = System.currentTimeMillis();
-//
-//            try (Socket puSocketConnection = new Socket(this.getHost(), this.getPort())) {
-//                puSocketConnection.setSoTimeout(this.getPingTimeout());
-//
-//                if (puSocketConnection.isConnected()) {
-//                    long endTime = System.currentTimeMillis();
-//                    long pingResult = endTime - startTime;
-//                    pingResultTotal += pingResult;
-//                    if (this.logger.isTraceEnabled()) {
-//                        this.logger.trace(String.format("PING OK: Attempt #%s to connect to %s on port %s succeeded in %s ms", i + 1, this.getHost(), this.getPort(), pingResult));
-//                    }
-//                } else {
-//                    if (this.logger.isDebugEnabled()) {
-//                        this.logger.debug(String.format("PING DISCONNECTED: Connection to %s did not succeed within the timeout period of %sms", this.getHost(), this.getPingTimeout()));
-//                    }
-//                    return this.getPingTimeout();
-//                }
-//            } catch (SocketTimeoutException | ConnectException tex) {
-//                throw new RuntimeException("Socket connection timed out", tex);
-//            } catch (Exception e) {
-//                if (this.logger.isWarnEnabled()) {
-//                    this.logger.warn(String.format("PING TIMEOUT: Connection to %s did not succeed, UNKNOWN ERROR %s: ", host, e.getMessage()));
-//                }
-//                return this.getPingTimeout();
-//            }
-//        }
-//        return Math.max(1, Math.toIntExact(pingResultTotal / this.getPingAttempts()));
-//    }
+	/**
+	 * @return pingTimeout value if host is not reachable within
+	 * the pingTimeout, a ping time in milliseconds otherwise
+	 * if ping is 0ms it's rounded up to 1ms to avoid IU issues on Symphony portal
+	 */
+	@Override
+	public int ping() throws IOException {
+		long pingResultTotal = 0L;
+
+		for (int i = 0; i < this.getPingAttempts(); i++) {
+			long startTime = System.currentTimeMillis();
+
+			try (Socket puSocketConnection = new Socket(this.getHost(), this.getPort())) {
+				puSocketConnection.setSoTimeout(this.getPingTimeout());
+
+				if (puSocketConnection.isConnected()) {
+					long endTime = System.currentTimeMillis();
+					long pingResult = endTime - startTime;
+					pingResultTotal += pingResult;
+					if (this.logger.isTraceEnabled()) {
+						this.logger.trace(String.format("PING OK: Attempt #%s to connect to %s on port %s succeeded in %s ms", i + 1, this.getHost(), this.getPort(), pingResult));
+					}
+				} else {
+					if (this.logger.isDebugEnabled()) {
+						this.logger.debug(String.format("PING DISCONNECTED: Connection to %s did not succeed within the timeout period of %sms", this.getHost(), this.getPingTimeout()));
+					}
+					return this.getPingTimeout();
+				}
+			} catch (SocketTimeoutException | ConnectException tex) {
+				throw new RuntimeException("Socket connection timed out", tex);
+			} catch (Exception e) {
+				if (this.logger.isWarnEnabled()) {
+					this.logger.warn(String.format("PING TIMEOUT: Connection to %s did not succeed, UNKNOWN ERROR %s: ", host, e.getMessage()));
+				}
+				return this.getPingTimeout();
+			}
+		}
+		return Math.max(1, Math.toIntExact(pingResultTotal / this.getPingAttempts()));
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -417,6 +427,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 
 				filterGainComponentByNameSet = handleGainInputFromUser(filterGainComponentByName);
+				filterPluginByNameSet = handleSplitPluginConfig();
 				if (localPollingInterval == 0) {
 					filterDeviceByNameSet = convertUserInput(filterDeviceByName);
 					updateFilterDeviceTypeSet();
@@ -452,7 +463,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			}
 			isEmergencyDelivery = false;
 		} finally {
-			qrcCommandThreshold += 1;
 			reentrantLock.unlock();
 		}
 
@@ -538,6 +548,17 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 										String result = "\"" + value + "\"";
 										populateMiddleAtlanticControl(deviceId, property, result);
 										break;
+									case OUTLET_1_CYCLE_TIME:
+									case OUTLET_2_CYCLE_TIME:
+									case OUTLET_3_CYCLE_TIME:
+									case OUTLET_4_CYCLE_TIME:
+									case OUTLET_5_CYCLE_TIME:
+									case OUTLET_6_CYCLE_TIME:
+									case OUTLET_7_CYCLE_TIME:
+									case OUTLET_8_CYCLE_TIME:
+										String outletTime = getValueByRange(QSYSCoreConstant.MIN_CYCLE_TIME, QSYSCoreConstant.MAX_CYCLE_TIME, value);
+										populateMiddleAtlanticControl(deviceId, property, outletTime);
+										break;
 									default:
 										populateMiddleAtlanticControl(deviceId, property, value);
 										break;
@@ -565,6 +586,35 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			TimeUnit.MILLISECONDS.sleep(500);
 		} finally {
 			reentrantLock.unlock();
+		}
+	}
+
+	/**
+	 * Get value by range if the value out of range return the initial value
+	 *
+	 * @param min is the minimum value
+	 * @param max is the maximum value
+	 * @param value is the value to compare between min and max value
+	 * @return String is value or initial value
+	 */
+	private String getValueByRange(int min, int max, String value) {
+		int initial = min;
+		try {
+			int valueCompare = Integer.parseInt(value);
+			if (min <= valueCompare && valueCompare <= max) {
+				return String.valueOf(valueCompare);
+			}
+			if (valueCompare > max) {
+				initial = max;
+			}
+			return String.valueOf(initial);
+		} catch (Exception e) {
+			//example value  1xxxxxxx, return max value
+			//example value -1xxxxxxx, return min value
+			if (!value.contains(QSYSCoreConstant.DASH)) {
+				initial = max;
+			}
+			return String.valueOf(initial);
 		}
 	}
 
@@ -656,8 +706,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.OK_STATUS.equals(deviceStatus));
 					String deviceName = device.getKey();
 					if (aggregatedDevice.getDeviceId().contains("Sennheiser")) {
-						deviceName = aggregatedDevice.getProperties().get(SennheiserDeviceMetric.DEVICE.getMetric());
-						aggregatedDevice.getProperties().remove(SennheiserDeviceMetric.DEVICE.getMetric());
+						deviceName = device.getValue().getStats().get(SennheiserDeviceMetric.DEVICE.getMetric());
+						device.getValue().getStats().remove(SennheiserDeviceMetric.DEVICE.getMetric());
 					}
 					aggregatedDevice.setDeviceName(deviceName);
 					aggregatedDevice.setProperties(device.getValue().getStats());
@@ -707,7 +757,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		if (!isQrcCommunicatorFirstTimeInit && qrcCommunicator != null) {
 			qrcCommunicator.destroyChannel();
 			qrcCommunicator = null;
-			qrcCommandThreshold = 0;
 		}
 	}
 
@@ -770,6 +819,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		isQrcCommunicatorFirstTimeInit = true;
 		devicesExecutionPool.forEach(future -> future.cancel(true));
 		devicesExecutionPool.clear();
+		filterPluginByNameSet.clear();
 		super.internalDestroy();
 	}
 
@@ -802,9 +852,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * @throws ResourceNotReachableException when failedMonitor said all device monitoring data are failed to get
 	 */
 	private void populateQSYSAggregatorMonitoringData(Map<String, String> stats) throws Exception {
-//		retrieveQSYSAggregatorInfo(stats);
-//		retrieveQSYSAggregatorNetworkInfo(stats);
-//		retrieveQSYSAggregatorDesign(stats);
+		retrieveQSYSAggregatorInfo(stats);
+		retrieveQSYSAggregatorNetworkInfo(stats);
+		retrieveQSYSAggregatorDesign(stats);
 	}
 
 	/**
@@ -962,19 +1012,13 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			return;
 		}
 		existDeviceSet.add(componentInfo.getId());
-		QSYSPeripheralDevice device;
-		if (componentInfo.getId() != null && componentInfo.getId().toLowerCase(Locale.ROOT).contains(QSYSCoreConstant.SENNHEISER.toLowerCase(Locale.ROOT))) {
-			device = new SennheiserDevice();
-			device.setType(QSYSCoreConstant.PLUGIN);
-		} else if (componentInfo.getId() != null && componentInfo.getId().toLowerCase(Locale.ROOT).contains(QSYSCoreConstant.MIDDLE_ATLANTIC.toLowerCase(Locale.ROOT))) {
-			device = new MiddleAtlanticDevice();
-			device.setType(QSYSCoreConstant.PLUGIN);
-		} else if (componentInfo.getId() != null && componentInfo.getId().toLowerCase(Locale.ROOT).contains(QSYSCoreConstant.DATA_PROBE.toLowerCase(Locale.ROOT))) {
-			device = new PDUDevice();
-			device.setType(QSYSCoreConstant.PLUGIN);
-		} else if (componentInfo.getId() != null && componentInfo.getId().toLowerCase(Locale.ROOT).contains(QSYSCoreConstant.NETGEAR.toLowerCase(Locale.ROOT))) {
-			device = new NetgearAVLineSwitchDevice();
-			device.setType(QSYSCoreConstant.PLUGIN);
+		QSYSPeripheralDevice device = null;
+		if (componentInfo.getType().contains(QSYSCoreConstant.PLUGIN)) {
+			device = populateDeviceHasTypeIsPlugin(componentInfo);
+			if (device != null && device.getType() == null) {
+				device = createDeviceByType(componentInfo.getType());
+				device.setType(componentInfo.getType());
+			}
 		} else {
 			device = createDeviceByType(componentInfo.getType());
 			device.setType(componentInfo.getType());
@@ -982,6 +1026,45 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		if (device != null && !deviceMap.containsKey(componentInfo.getId())) {
 			deviceMap.put(componentInfo.getId(), device);
 		}
+	}
+
+	/**
+	 * populate device with type is Plugin
+	 *
+	 * @param componentInfo component info of device
+	 * @return QSYSPeripheralDevice instances
+	 */
+	private QSYSPeripheralDevice populateDeviceHasTypeIsPlugin(ComponentInfo componentInfo) {
+		QSYSPeripheralDevice device = null;
+		if (componentInfo.getId() == null) {
+			return device;
+		}
+
+		String id = componentInfo.getId().toLowerCase(Locale.ROOT);
+		for (String pluginType : QSYSCoreConstant.PLUGIN_LIST) {
+			if (!filterPluginByNameSet.isEmpty() && id.contains(pluginType.toLowerCase(Locale.ROOT)) && isPluginNameExits(id)) {
+				device = createDeviceByType(pluginType);
+				device.setType(QSYSCoreConstant.PLUGIN);
+				return device;
+			}
+		}
+		return device;
+	}
+
+	/**
+	 * Checks if the provided plugin ID contains any of the names in the filter set.
+	 *
+	 * @param id the id of the plugin to check
+	 * @return if the Iid contains any of the names in the filter set;
+	 * {false} otherwise
+	 */
+	private boolean isPluginNameExits(String id) {
+		for (String value : filterPluginByNameSet) {
+			if (id.contains(value.toLowerCase(Locale.ROOT))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -1010,6 +1093,12 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				return new VideoSourceDevice();
 			case QSYSCoreConstant.MONITORING_PROXY:
 				return new MonitoringProxyDevice();
+			case QSYSCoreConstant.SENNHEISER:
+				return new SennheiserDevice();
+			case QSYSCoreConstant.MIDDLE_ATLANTIC:
+				return new MiddleAtlanticDevice();
+			case QSYSCoreConstant.NETGEAR:
+				return new NetgearAVLineSwitchDevice();
 			default:
 				this.logger.error("Type " + type + " does not exist");
 				return null;
@@ -1531,5 +1620,22 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		}
 
 		return namedGainComponents;
+	}
+
+	/**
+	 * handle split plugin name
+	 *
+	 * @return Set<String> are all name of plugin
+	 */
+	private Set<String> handleSplitPluginConfig() {
+		if (StringUtils.isNullOrEmpty(filterPluginByName)) {
+			return new HashSet<>();
+		}
+		Set<String> pluginConfigs = new HashSet<>();
+		String[] slip = filterPluginByName.split(QSYSCoreConstant.COMMA);
+		for (String deviceName : slip) {
+			pluginConfigs.add(deviceName.trim());
+		}
+		return pluginConfigs;
 	}
 }
