@@ -3,8 +3,6 @@
  */
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
 
-import java.util.Objects;
-
 /**
  * NetgearDeviceMetric save all metric fields and corresponding response fields of the NetgearDeviceMetric device
  *
@@ -115,20 +113,5 @@ public enum NetgearDeviceMetric {
 	 */
 	public String getProperty() {
 		return property;
-	}
-
-	/**
-	 * Get metric of metric from MiddleAtlanticMetric
-	 *
-	 * @param metric metric of metric
-	 * @return Enum of MiddleAtlanticMetric
-	 */
-	public static NetgearDeviceMetric getByMetric(String metric) {
-		for (NetgearDeviceMetric controllingMetric : values()) {
-			if (Objects.equals(controllingMetric.getMetric(), metric)) {
-				return controllingMetric;
-			}
-		}
-		throw new IllegalArgumentException("Cannot find the enum with metric: " + metric);
 	}
 }

@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2024 AVI-SPL, Inc. All Rights Reserved.
+ */
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice;
 
 import com.fasterxml.jackson.databind.JsonNode;
