@@ -126,7 +126,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private String filterPluginByName;
 
 	/**
-	 * store plugin name
+	 * Set store all name for filter plugin
 	 */
 	private Set<String> filterPluginByNameSet;
 
