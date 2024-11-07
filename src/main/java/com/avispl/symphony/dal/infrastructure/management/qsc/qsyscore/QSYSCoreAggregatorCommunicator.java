@@ -9,27 +9,18 @@ import java.net.ConnectException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+
+import com.avispl.symphony.api.dal.error.CommandFailureException;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.*;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.*;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -48,22 +39,11 @@ import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
-import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.api.dal.monitor.aggregator.Aggregator;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.GainControllingMetric;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreURL;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.CameraDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.ControlInterfaceDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.DisplayDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.MonitoringProxyDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.ProcessorDevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.VideoIODevice;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.VideoSourceDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.streamiodevice.StreamInputDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.streamiodevice.StreamOutputDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.ComponentInfo;
@@ -140,6 +120,16 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private boolean isEmergencyDelivery = false;
 	private LoginInfo loginInfo;
 	private ExtendedStatistics localExtStats;
+
+	/**
+	 * Filter by plugin name
+	 */
+	private String filterPluginByName;
+
+	/**
+	 * Set store all name for filter plugin
+	 */
+	private Set<String> filterPluginByNameSet;
 
 	/**
 	 * Filter gain by name
@@ -293,6 +283,14 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		this.filterGainComponentByName = filterGainComponentByName;
 	}
 
+	public String getFilterPluginByName() {
+		return filterPluginByName;
+	}
+
+	public void setFilterPluginByName(String filterPluginByName) {
+		this.filterPluginByName = filterPluginByName;
+	}
+
 	/**
 	 * Retrieves {@link #filterDeviceByQSYSType}
 	 *
@@ -430,6 +428,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 
 				filterGainComponentByNameSet = handleGainInputFromUser(filterGainComponentByName);
+				filterPluginByNameSet = handleSplitPluginConfig();
 				if (localPollingInterval == 0) {
 					filterDeviceByNameSet = convertUserInput(filterDeviceByName);
 					updateFilterDeviceTypeSet();
@@ -459,7 +458,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 
 				populateAggregatedMonitoringData(currentSizeDeviceMap);
-
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setControllableProperties(controllableProperties);
 				localExtStats = extendedStatistics;
@@ -495,34 +493,182 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (qrcCommunicator == null) {
 				initQRCCommunicator();
 			}
-
 			String property = controllableProperty.getProperty();
 			String value = String.valueOf(controllableProperty.getValue());
-
+			String deviceId = controllableProperty.getDeviceId();
 			if (this.logger.isDebugEnabled()) {
 				this.logger.debug("controlProperty property " + property);
 				this.logger.debug("controlProperty value " + value);
 			}
 
-			String[] splitProperty = property.split(QSYSCoreConstant.HASH);
+			if (StringUtils.isNotNullOrEmpty(deviceId)) {
+				mapOfIdAndAggregatedDeviceList.entrySet().stream().filter(device -> device.getKey().equalsIgnoreCase(deviceId)).filter(device -> "Plugin".equalsIgnoreCase(device.getValue().getType()))
+						.findFirst().ifPresent(device -> {
+							if (deviceId.contains("Sennheiser")) {
+								SennheiserDeviceMetric sennheiserDevice = EnumTypeHandler.getPropertiesByName(SennheiserDeviceMetric.class, property);
+								switch (sennheiserDevice) {
+									case AUDIO_LEVEL:
+										populateSennheiserControl(deviceId, property, value);
+										device.getValue().getStats().put(QSYSCoreConstant.AUDIO_LEVEL_CURRENT_VALUE, value);
+										break;
+									case LED_BRIGHTNESS:
+										populateSennheiserControl(deviceId, property, value);
+										device.getValue().getStats().put(QSYSCoreConstant.LED_BRIGHTNESS_CURRENT_VALUE, value);
+										break;
+									case MUTE_COLOR:
+									case ON_COLOR:
+									case NOISE_LEVEL:
+									case SOUND_PROFILE:
+										String result = "\"" + value + "\"";
+										populateSennheiserControl(deviceId, property, result);
+										break;
+									default:
+										populateSennheiserControl(deviceId, property, value);
+										break;
+								}
+							} else if (deviceId.contains("MiddleAtlantic")) {
+								MiddleAtlanticMetric middleAtlantic = EnumTypeHandler.getPropertiesByName(MiddleAtlanticMetric.class, property);
+								switch (middleAtlantic) {
+									case OUTLET_1_NAME:
+									case OUTLET_2_NAME:
+									case OUTLET_3_NAME:
+									case OUTLET_4_NAME:
+									case OUTLET_5_NAME:
+									case OUTLET_6_NAME:
+									case OUTLET_7_NAME:
+									case OUTLET_8_NAME:
+									case OUTLET_1_CYCLE:
+									case OUTLET_2_CYCLE:
+									case OUTLET_3_CYCLE:
+									case OUTLET_4_CYCLE:
+									case OUTLET_5_CYCLE:
+									case OUTLET_6_CYCLE:
+									case OUTLET_7_CYCLE:
+									case OUTLET_8_CYCLE:
+									case RESTART_UPS_DELAY_TIME:
+										String result = "\"" + value + "\"";
+										populateMiddleAtlanticControl(deviceId, property, result);
+										break;
+									case RESTART_UPS:
+										populateMiddleAtlanticControl(deviceId, property, "true");
+										break;
+									case OUTLET_1_CYCLE_TIME:
+									case OUTLET_2_CYCLE_TIME:
+									case OUTLET_3_CYCLE_TIME:
+									case OUTLET_4_CYCLE_TIME:
+									case OUTLET_5_CYCLE_TIME:
+									case OUTLET_6_CYCLE_TIME:
+									case OUTLET_7_CYCLE_TIME:
+									case OUTLET_8_CYCLE_TIME:
+										String outletTime = getValueByRange(QSYSCoreConstant.MIN_CYCLE_TIME, QSYSCoreConstant.MAX_CYCLE_TIME, value);
+										populateMiddleAtlanticControl(deviceId, property, outletTime);
+										break;
+									default:
+										populateMiddleAtlanticControl(deviceId, property, value);
+										break;
+								}
+							}
+						});
+			} else {
+				String[] splitProperty = property.split(QSYSCoreConstant.HASH);
 
-			// Ex: Gain:Named Component#Gain Value Control
-			// metricName = Gain Value Control
-			// namedComponent = Named Component
-			String metricName = splitProperty[1];
-			List<String> splitComponent = Arrays.asList(splitProperty[0].split(QSYSCoreConstant.COLON, 2));
-			switch (splitComponent.get(0)) {
-				case QSYSCoreConstant.GAIN:
-					String gainComponent = splitComponent.size() > 1 ? splitComponent.get(1) : splitComponent.get(0);
-					gainControl(metricName, gainComponent, value);
-					updateGainControlByMetricName(metricName, value, property);
-					break;
-				default:
-					logger.debug("Component Name doesn't support: " + metricName);
+				// Ex: Gain:Named Component#Gain Value Control
+				// metricName = Gain Value Control
+				// namedComponent = Named Component
+				String metricName = splitProperty[1];
+				List<String> splitComponent = Arrays.asList(splitProperty[0].split(QSYSCoreConstant.COLON, 2));
+				switch (splitComponent.get(0)) {
+					case QSYSCoreConstant.GAIN:
+						String gainComponent = splitComponent.size() > 1 ? splitComponent.get(1) : splitComponent.get(0);
+						gainControl(metricName, gainComponent, value);
+						updateGainControlByMetricName(metricName, value, property);
+						break;
+					default:
+						logger.debug("Component Name doesn't support: " + metricName);
+				}
 			}
 			TimeUnit.MILLISECONDS.sleep(500);
 		} finally {
 			reentrantLock.unlock();
+		}
+	}
+
+	/**
+	 * Get value by range if the value out of range return the initial value
+	 *
+	 * @param min is the minimum value
+	 * @param max is the maximum value
+	 * @param value is the value to compare between min and max value
+	 * @return String is value or initial value
+	 */
+	private String getValueByRange(int min, int max, String value) {
+		int initial = min;
+		try {
+			int valueCompare = Integer.parseInt(value);
+			if (min <= valueCompare && valueCompare <= max) {
+				return String.valueOf(valueCompare);
+			}
+			if (valueCompare > max) {
+				initial = max;
+			}
+			return String.valueOf(initial);
+		} catch (Exception e) {
+			//example value  1xxxxxxx, return max value
+			//example value -1xxxxxxx, return min value
+			if (!value.contains(QSYSCoreConstant.DASH)) {
+				initial = max;
+			}
+			return String.valueOf(initial);
+		}
+	}
+
+	/**
+	 * Populate send sennheiser control
+	 *
+	 * @param metricName is the name of device
+	 * @param property is property name of device
+	 * @param value is value to send command
+	 */
+	private void populateSennheiserControl(String metricName, String property, String value) {
+		RpcMethod method = RpcMethod.SET_CONTROLS;
+		String request = String.format(RpcMethod.getRequest(), method.getName(), RpcMethod.getParamsString(method));
+		request = String.format(request, metricName, SennheiserDeviceMetric.getByMetric(property).getProperty(), value);
+		try {
+			List<String> response = Arrays.asList(qrcCommunicator.send(request));
+			if (response.size() > 1) {
+				JsonNode responseControl = objectMapper.readValue(response.get(1), JsonNode.class);
+
+				if (!responseControl.has(QSYSCoreConstant.RESULT) || !responseControl.get(QSYSCoreConstant.RESULT).asText().equals(QSYSCoreConstant.TRUE)) {
+					throw new IllegalStateException("Error: cannot set Sennheiser device value " + property);
+				}
+			}
+		} catch (Exception e) {
+			throw new ResourceNotReachableException("Error when control " + property + " device", e);
+		}
+	}
+
+	/**
+	 * Populate send MiddleAtlantic control
+	 *
+	 * @param metricName is the name of device
+	 * @param property is property name of device
+	 * @param value is value to send command
+	 */
+	private void populateMiddleAtlanticControl(String metricName, String property, String value) {
+		RpcMethod method = RpcMethod.SET_CONTROLS;
+		String request = String.format(RpcMethod.getRequest(), method.getName(), RpcMethod.getParamsString(method));
+		request = String.format(request, metricName, MiddleAtlanticMetric.getByMetric(property).getProperty(), value);
+		try {
+			List<String> response = Arrays.asList(qrcCommunicator.send(request));
+			if (response.size() > 1) {
+				JsonNode responseControl = objectMapper.readValue(response.get(1), JsonNode.class);
+
+				if (!responseControl.has(QSYSCoreConstant.RESULT) || !responseControl.get(QSYSCoreConstant.RESULT).asText().equals(QSYSCoreConstant.TRUE)) {
+					throw new IllegalStateException("Error: cannot set middle atlantic value " + property);
+				}
+			}
+		} catch (Exception e) {
+			throw new ResourceNotReachableException("Error when control " + property, e);
 		}
 	}
 
@@ -556,18 +702,19 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		}
 		synchronized (mapOfIdAndAggregatedDeviceList) {
 			for (Entry<String, QSYSPeripheralDevice> device : mapOfIdAndAggregatedDeviceList.entrySet()) {
-				if ((StringUtils.isNullOrEmpty(filterDeviceByQSYSType) || filterDeviceByQSYSTypeSet.contains(device.getValue().getType())) &&
-						(StringUtils.isNullOrEmpty(filterDeviceByName) || filterDeviceByNameSet.contains(device.getKey()))) {
+				if ((StringUtils.isNullOrEmpty(filterDeviceByQSYSType) || filterDeviceByQSYSTypeSet.contains(device.getValue().getType())) && (StringUtils.isNullOrEmpty(filterDeviceByName)
+						|| filterDeviceByNameSet.contains(device.getKey()))) {
 					AggregatedDevice aggregatedDevice = new AggregatedDevice();
 					aggregatedDevice.setDeviceId(device.getKey());
-					Map<String, String> stats = device.getValue().getStats();
-					if (stats == null || stats.isEmpty()) continue;
 					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
-					if (deviceStatus != null) {
-						aggregatedDevice.setDeviceOnline(deviceStatus.startsWith(QSYSCoreConstant.OK_STATUS));
+					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.OK_STATUS.equals(deviceStatus));
+					String deviceName = device.getKey();
+					if (aggregatedDevice.getDeviceId().contains("Sennheiser")) {
+						deviceName = device.getValue().getStats().get(SennheiserDeviceMetric.DEVICE.getMetric());
+						device.getValue().getStats().remove(SennheiserDeviceMetric.DEVICE.getMetric());
 					}
-					aggregatedDevice.setDeviceName(device.getKey());
-					aggregatedDevice.setProperties(stats);
+					aggregatedDevice.setDeviceName(deviceName);
+					aggregatedDevice.setProperties(device.getValue().getStats());
 					aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
 					provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
 					aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
@@ -654,14 +801,16 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		deviceMap.clear();
 		loginInfo = null;
 		localPollingInterval = 0;
-		if (localExtStats.getStatistics() != null) {
-			localExtStats.getStatistics().clear();
-		}
-		if (localExtStats.getDynamicStatistics() != null) {
-			localExtStats.getDynamicStatistics().clear();
-		}
-		if (localExtStats.getControllableProperties() != null) {
-			localExtStats.getControllableProperties().clear();
+		if (localExtStats != null) {
+			if (localExtStats.getStatistics() != null) {
+				localExtStats.getStatistics().clear();
+			}
+			if (localExtStats.getDynamicStatistics() != null) {
+				localExtStats.getDynamicStatistics().clear();
+			}
+			if (localExtStats.getControllableProperties() != null) {
+				localExtStats.getControllableProperties().clear();
+			}
 		}
 		if (executorService != null) {
 			executorService.shutdownNow();
@@ -674,6 +823,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		isQrcCommunicatorFirstTimeInit = true;
 		devicesExecutionPool.forEach(future -> future.cancel(true));
 		devicesExecutionPool.clear();
+		filterPluginByNameSet.clear();
 		super.internalDestroy();
 	}
 
@@ -828,7 +978,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 							retrieveGainComponent(stats, controllableProperties, componentInfo.getId());
 							continue;
 						}
-						if (localPollingInterval == 0 && componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType())) {
+						if (localPollingInterval == 0 && componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType()) || componentInfo.getType()
+								.contains(QSYSCoreConstant.PLUGIN)) {
 							retrieveDevice(existDeviceSet, componentInfo);
 						}
 					}
@@ -865,11 +1016,59 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			return;
 		}
 		existDeviceSet.add(componentInfo.getId());
-		QSYSPeripheralDevice device = createDeviceByType(componentInfo.getType());
-		device.setType(componentInfo.getType());
+		QSYSPeripheralDevice device = null;
+		if (componentInfo.getType().contains(QSYSCoreConstant.PLUGIN)) {
+			device = populateDeviceHasTypeIsPlugin(componentInfo);
+			if (device != null && device.getType() == null) {
+				device = createDeviceByType(componentInfo.getType());
+				device.setType(componentInfo.getType());
+			}
+		} else {
+			device = createDeviceByType(componentInfo.getType());
+			device.setType(componentInfo.getType());
+		}
 		if (device != null && !deviceMap.containsKey(componentInfo.getId())) {
 			deviceMap.put(componentInfo.getId(), device);
 		}
+	}
+
+	/**
+	 * populate device with type is Plugin
+	 *
+	 * @param componentInfo component info of device
+	 * @return QSYSPeripheralDevice instances
+	 */
+	private QSYSPeripheralDevice populateDeviceHasTypeIsPlugin(ComponentInfo componentInfo) {
+		QSYSPeripheralDevice device = null;
+		if (componentInfo.getId() == null) {
+			return device;
+		}
+
+		String id = componentInfo.getId().toLowerCase(Locale.ROOT);
+		for (String pluginType : QSYSCoreConstant.PLUGIN_LIST) {
+			if (!filterPluginByNameSet.isEmpty() && id.contains(pluginType.toLowerCase(Locale.ROOT)) && isPluginNameExits(id)) {
+				device = createDeviceByType(pluginType);
+				device.setType(QSYSCoreConstant.PLUGIN);
+				return device;
+			}
+		}
+		return device;
+	}
+
+	/**
+	 * Checks if the provided plugin ID contains any of the names in the filter set.
+	 *
+	 * @param id the id of the plugin to check
+	 * @return if the Iid contains any of the names in the filter set;
+	 * {false} otherwise
+	 */
+	private boolean isPluginNameExits(String id) {
+		for (String value : filterPluginByNameSet) {
+			if (id.contains(value.toLowerCase(Locale.ROOT))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -898,6 +1097,12 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				return new VideoSourceDevice();
 			case QSYSCoreConstant.MONITORING_PROXY:
 				return new MonitoringProxyDevice();
+			case QSYSCoreConstant.SENNHEISER:
+				return new SennheiserDevice();
+			case QSYSCoreConstant.MIDDLE_ATLANTIC:
+				return new MiddleAtlanticDevice();
+			case QSYSCoreConstant.NETGEAR:
+				return new NetgearAVLineSwitchDevice();
 			default:
 				this.logger.error("Type " + type + " does not exist");
 				return null;
@@ -1221,6 +1426,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			case QSYSCoreConstant.VIDEO_SOURCE_DEVICE:
 				return QSYSCoreConstant.VIDEO_SOURCE_TYPE;
 			case QSYSCoreConstant.MONITORING_PROXY:
+			case QSYSCoreConstant.PLUGIN:
 				return QSYSCoreConstant.MONITORING_PROXY_TYPE;
 			case QSYSCoreConstant.DISPLAY_DEVICE:
 				return QSYSCoreConstant.DISPLAY_TYPE;
@@ -1418,5 +1624,22 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		}
 
 		return namedGainComponents;
+	}
+
+	/**
+	 * handle split plugin name
+	 *
+	 * @return Set<String> are all name of plugin
+	 */
+	private Set<String> handleSplitPluginConfig() {
+		if (StringUtils.isNullOrEmpty(filterPluginByName)) {
+			return new HashSet<>();
+		}
+		Set<String> pluginConfigs = new HashSet<>();
+		String[] slip = filterPluginByName.split(QSYSCoreConstant.COMMA);
+		for (String deviceName : slip) {
+			pluginConfigs.add(deviceName.trim());
+		}
+		return pluginConfigs;
 	}
 }

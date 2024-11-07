@@ -294,7 +294,7 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 
 		String[] response;
 		try {
-			this.numOfResponses = this.status.getConnectionState() == ConnectionState.Connected? 1: 2;
+			this.numOfResponses = this.status.getConnectionState() == ConnectionState.Connected ? 1 : 2;
 			response = this.send(data, true);
 		} finally {
 			writeLock.unlock();
@@ -431,25 +431,21 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 		do {
 			try {
 				int x = inputStreamReader.read();
-
 				if (x == -1) {
 					// Handle end of stream
 					throw new IOException("End of stream reached unexpectedly");
 				}
 
 				stringBuilder.append((char) x);
-
 				// Char '\00' has int value is 0
 				// It is the symbol represents for the end of one response
 				if (x == 0) {
 					countResponses++;
 				}
-
 				// It's necessary to add read timeout to break the loop in case response data do not contain end character
 				if (System.currentTimeMillis() - startTime > timeout) {
 					throw new IOException("Timeout while waiting for response");
 				}
-
 			} catch (IOException e) {
 				logger.error("Error reading response from socket, socket server might close", e);
 				throw new IOException(e.getMessage());
@@ -467,8 +463,8 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 	 * Compose responses data
 	 */
 	private String[] extractResponse(String response) {
-		if (!response.contains("\00")) return new String[0];
 
+		if (!response.contains("\00")) return new String[0];
 		List<String> result = new ArrayList<>();
 		if (this.numOfResponses == 1) {
 			result.add(QSYSCoreConstant.EMPTY);
