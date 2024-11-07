@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.*;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice.*;
 
@@ -547,6 +548,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 									case RESTART_UPS_DELAY_TIME:
 										String result = "\"" + value + "\"";
 										populateMiddleAtlanticControl(deviceId, property, result);
+										break;
+									case RESTART_UPS:
+										populateMiddleAtlanticControl(deviceId, property, "true");
 										break;
 									case OUTLET_1_CYCLE_TIME:
 									case OUTLET_2_CYCLE_TIME:
@@ -1245,30 +1249,30 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		ObjectNode request = JsonNodeFactory.instance.objectNode();
 		request.put(QSYSCoreConstant.USERNAME, login);
 		request.put(QSYSCoreConstant.PASSWORD, password);
-//		try {
-//			if (this.loginInfo.isTimeout() || this.loginInfo.getToken() == null) {
-//				JsonNode responseData = doPost(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.TOKEN), request, JsonNode.class);
-//				if (responseData != null) {
-//					String token = responseData.get(QSYSCoreConstant.TOKEN).asText();
-//					if (token != null) {
-//						this.loginInfo.setToken(token);
-//						this.loginInfo.setLoginDateTime(System.currentTimeMillis());
-//					} else {
-//						this.loginInfo.setToken(null);
-//					}
-//				} else {
-//					this.loginInfo.setToken(null);
-//				}
-//			}
-//		} catch (CommandFailureException e) {
-//			if (!StringUtils.isNullOrEmpty(getPassword()) && !StringUtils.isNullOrEmpty(getLogin())) {
-//				throw new FailedLoginException("Unable to login. Please check device credentials");
-//			}
-//			this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
-//			this.loginInfo.setLoginDateTime(System.currentTimeMillis());
-//		} catch (Exception e) {
-//			throw new ResourceNotReachableException("Unable to retrieve the authorization token, endpoint not reachable", e);
-//		}
+		try {
+			if (this.loginInfo.isTimeout() || this.loginInfo.getToken() == null) {
+				JsonNode responseData = doPost(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.TOKEN), request, JsonNode.class);
+				if (responseData != null) {
+					String token = responseData.get(QSYSCoreConstant.TOKEN).asText();
+					if (token != null) {
+						this.loginInfo.setToken(token);
+						this.loginInfo.setLoginDateTime(System.currentTimeMillis());
+					} else {
+						this.loginInfo.setToken(null);
+					}
+				} else {
+					this.loginInfo.setToken(null);
+				}
+			}
+		} catch (CommandFailureException e) {
+			if (!StringUtils.isNullOrEmpty(getPassword()) && !StringUtils.isNullOrEmpty(getLogin())) {
+				throw new FailedLoginException("Unable to login. Please check device credentials");
+			}
+			this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
+			this.loginInfo.setLoginDateTime(System.currentTimeMillis());
+		} catch (Exception e) {
+			throw new ResourceNotReachableException("Unable to retrieve the authorization token, endpoint not reachable", e);
+		}
 	}
 
 	/**
@@ -1311,7 +1315,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					errorDeviceMap.remove(deviceId);
 				}
 			} catch (Exception e) {
-				logger.error("Can not retrieve information of aggregated device have id is " + deviceId);
+				logger.error("Can not retrieve information of aggregated device have id is " + deviceId, e);
 			}
 		}
 	}
