@@ -3,11 +3,7 @@
  */
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore;
 
-import java.io.IOException;
 import java.math.RoundingMode;
-import java.net.ConnectException;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Map.Entry;
@@ -151,7 +147,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private Deque<String> deviceIdDequeue = new ArrayDeque<>();
 
-
 	/**
 	 * Filter model by name
 	 */
@@ -225,7 +220,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		this.setTrustAllCertificates(true);
 	}
 
-
 	/**
 	 * Retrieves {@link #historicalProperties}
 	 *
@@ -283,10 +277,20 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		this.filterGainComponentByName = filterGainComponentByName;
 	}
 
+	/**
+	 * Retrieves {@link #filterPluginByName
+	 *
+	 * @return value of {@link #filterPluginByName}
+	 */
 	public String getFilterPluginByName() {
 		return filterPluginByName;
 	}
 
+	/**
+	 * Sets {@link #filterPluginByName} value
+	 *
+	 * @param filterPluginByName new value of {@link #filterGainComponentByName}
+	 */
 	public void setFilterPluginByName(String filterPluginByName) {
 		this.filterPluginByName = filterPluginByName;
 	}
@@ -343,46 +347,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	public void setPollingInterval(String pollingInterval) {
 		this.pollingInterval = pollingInterval;
-	}
-
-	/**
-	 * @return pingTimeout value if host is not reachable within
-	 * the pingTimeout, a ping time in milliseconds otherwise
-	 * if ping is 0ms it's rounded up to 1ms to avoid IU issues on Symphony portal
-	 */
-	@Override
-	public int ping() throws IOException {
-		long pingResultTotal = 0L;
-
-		for (int i = 0; i < this.getPingAttempts(); i++) {
-			long startTime = System.currentTimeMillis();
-
-			try (Socket puSocketConnection = new Socket(this.getHost(), this.getPort())) {
-				puSocketConnection.setSoTimeout(this.getPingTimeout());
-
-				if (puSocketConnection.isConnected()) {
-					long endTime = System.currentTimeMillis();
-					long pingResult = endTime - startTime;
-					pingResultTotal += pingResult;
-					if (this.logger.isTraceEnabled()) {
-						this.logger.trace(String.format("PING OK: Attempt #%s to connect to %s on port %s succeeded in %s ms", i + 1, this.getHost(), this.getPort(), pingResult));
-					}
-				} else {
-					if (this.logger.isDebugEnabled()) {
-						this.logger.debug(String.format("PING DISCONNECTED: Connection to %s did not succeed within the timeout period of %sms", this.getHost(), this.getPingTimeout()));
-					}
-					return this.getPingTimeout();
-				}
-			} catch (SocketTimeoutException | ConnectException tex) {
-				throw new RuntimeException("Socket connection timed out", tex);
-			} catch (Exception e) {
-				if (this.logger.isWarnEnabled()) {
-					this.logger.warn(String.format("PING TIMEOUT: Connection to %s did not succeed, UNKNOWN ERROR %s: ", host, e.getMessage()));
-				}
-				return this.getPingTimeout();
-			}
-		}
-		return Math.max(1, Math.toIntExact(pingResultTotal / this.getPingAttempts()));
 	}
 
 	/**
@@ -568,6 +532,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 										break;
 								}
 							}
+							Map<String, String> stats = device.getValue().getStats();
+							List<AdvancedControllableProperty> advancedControllableProperties = device.getValue().getAdvancedControllableProperties();
+							updateValueForTheControllableProperty(property, value, stats, advancedControllableProperties);
 						});
 			} else {
 				String[] splitProperty = property.split(QSYSCoreConstant.HASH);
@@ -708,14 +675,13 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					aggregatedDevice.setDeviceId(device.getKey());
 					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
 					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.OK_STATUS.equals(deviceStatus));
-					String deviceName = device.getKey();
-					if (aggregatedDevice.getDeviceId().contains("Sennheiser")) {
-						deviceName = device.getValue().getStats().get(SennheiserDeviceMetric.DEVICE.getMetric());
-						device.getValue().getStats().remove(SennheiserDeviceMetric.DEVICE.getMetric());
-					}
-					aggregatedDevice.setDeviceName(deviceName);
+					aggregatedDevice.setDeviceName(device.getKey());
 					aggregatedDevice.setProperties(device.getValue().getStats());
-					aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
+					if (QSYSCoreConstant.MONITORING_PROXY_TYPE.equals(device.getValue().getType())) {
+						aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, QSYSCoreConstant.MONITORING_PROXY_TYPE);
+					} else {
+						aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
+					}
 					provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
 					aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
 					resultAggregatedDeviceList.add(aggregatedDevice);
@@ -1019,9 +985,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		QSYSPeripheralDevice device = null;
 		if (componentInfo.getType().contains(QSYSCoreConstant.PLUGIN)) {
 			device = populateDeviceHasTypeIsPlugin(componentInfo);
-			if (device != null && device.getType() == null) {
-				device = createDeviceByType(componentInfo.getType());
-				device.setType(componentInfo.getType());
+			if (device != null) {
+				device.setType(QSYSCoreConstant.MONITORING_PROXY_TYPE);
 			}
 		} else {
 			device = createDeviceByType(componentInfo.getType());
@@ -1045,12 +1010,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		}
 
 		String id = componentInfo.getId().toLowerCase(Locale.ROOT);
-		for (String pluginType : QSYSCoreConstant.PLUGIN_LIST) {
-			if (!filterPluginByNameSet.isEmpty() && id.contains(pluginType.toLowerCase(Locale.ROOT)) && isPluginNameExits(id)) {
-				device = createDeviceByType(pluginType);
-				device.setType(QSYSCoreConstant.PLUGIN);
-				return device;
-			}
+		if (!filterPluginByNameSet.isEmpty() && isPluginNameExits(id)) {
+			return new PluginDevice();
 		}
 		return device;
 	}
@@ -1063,12 +1024,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * {false} otherwise
 	 */
 	private boolean isPluginNameExits(String id) {
-		for (String value : filterPluginByNameSet) {
-			if (id.contains(value.toLowerCase(Locale.ROOT))) {
-				return true;
-			}
-		}
-		return false;
+		return filterPluginByNameSet.contains(id);
 	}
 
 	/**
@@ -1638,7 +1594,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		Set<String> pluginConfigs = new HashSet<>();
 		String[] slip = filterPluginByName.split(QSYSCoreConstant.COMMA);
 		for (String deviceName : slip) {
-			pluginConfigs.add(deviceName.trim());
+			pluginConfigs.add(deviceName.trim().toLowerCase(Locale.ROOT));
 		}
 		return pluginConfigs;
 	}
