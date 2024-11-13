@@ -21,6 +21,7 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.QSYSCoreAggregatorCommunicator;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.GainControllingMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.PluginDeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.VideoIODeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreDesignMetric;
@@ -518,7 +519,7 @@ public class TestQSYSCoreAggregatorCommunicator {
 	 */
 	@Test
 	void TestFilterByPluginDevice() throws Exception {
-		qSYSCoreCommunicator.setFilterPluginByName("VNOC Netgear" + "," + "FedSq Ceiling Mic");
+		qSYSCoreCommunicator.setFilterPluginByName("VNOC Netgear");
 		qSYSCoreCommunicator.getMultipleStatistics();
 		qSYSCoreCommunicator.retrieveMultipleStatistics();
 		Thread.sleep(30000);
@@ -526,8 +527,10 @@ public class TestQSYSCoreAggregatorCommunicator {
 		Thread.sleep(30000);
 		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
 		Optional<AggregatedDevice> netgearDevice = aggregatedDeviceList.stream().filter(device -> device.getDeviceId().contains("VNOC Netgear")).findFirst();
-		Assertions.assertNotNull(netgearDevice.get().getDeviceName());
-		Optional<AggregatedDevice> sennheiserDevice = aggregatedDeviceList.stream().filter(device -> device.getDeviceId().contains("VNOC Netgear")).findFirst();
-		Assertions.assertNotNull(sennheiserDevice.get().getDeviceName());
+		for (PluginDeviceMetric device : PluginDeviceMetric.values()) {
+			{
+				Assertions.assertNotNull(netgearDevice.get().getProperties().get(device.getMetric()));
+			}
+		}
 	}
 }

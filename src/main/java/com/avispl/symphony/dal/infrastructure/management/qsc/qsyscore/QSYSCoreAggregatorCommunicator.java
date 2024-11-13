@@ -459,183 +459,30 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			}
 			String property = controllableProperty.getProperty();
 			String value = String.valueOf(controllableProperty.getValue());
-			String deviceId = controllableProperty.getDeviceId();
 			if (this.logger.isDebugEnabled()) {
 				this.logger.debug("controlProperty property " + property);
 				this.logger.debug("controlProperty value " + value);
 			}
 
-			if (StringUtils.isNotNullOrEmpty(deviceId)) {
-				mapOfIdAndAggregatedDeviceList.entrySet().stream().filter(device -> device.getKey().equalsIgnoreCase(deviceId)).filter(device -> "Plugin".equalsIgnoreCase(device.getValue().getType()))
-						.findFirst().ifPresent(device -> {
-							if (deviceId.contains("Sennheiser")) {
-								SennheiserDeviceMetric sennheiserDevice = EnumTypeHandler.getPropertiesByName(SennheiserDeviceMetric.class, property);
-								switch (sennheiserDevice) {
-									case AUDIO_LEVEL:
-										populateSennheiserControl(deviceId, property, value);
-										device.getValue().getStats().put(QSYSCoreConstant.AUDIO_LEVEL_CURRENT_VALUE, value);
-										break;
-									case LED_BRIGHTNESS:
-										populateSennheiserControl(deviceId, property, value);
-										device.getValue().getStats().put(QSYSCoreConstant.LED_BRIGHTNESS_CURRENT_VALUE, value);
-										break;
-									case MUTE_COLOR:
-									case ON_COLOR:
-									case NOISE_LEVEL:
-									case SOUND_PROFILE:
-										String result = "\"" + value + "\"";
-										populateSennheiserControl(deviceId, property, result);
-										break;
-									default:
-										populateSennheiserControl(deviceId, property, value);
-										break;
-								}
-							} else if (deviceId.contains("MiddleAtlantic")) {
-								MiddleAtlanticMetric middleAtlantic = EnumTypeHandler.getPropertiesByName(MiddleAtlanticMetric.class, property);
-								switch (middleAtlantic) {
-									case OUTLET_1_NAME:
-									case OUTLET_2_NAME:
-									case OUTLET_3_NAME:
-									case OUTLET_4_NAME:
-									case OUTLET_5_NAME:
-									case OUTLET_6_NAME:
-									case OUTLET_7_NAME:
-									case OUTLET_8_NAME:
-									case OUTLET_1_CYCLE:
-									case OUTLET_2_CYCLE:
-									case OUTLET_3_CYCLE:
-									case OUTLET_4_CYCLE:
-									case OUTLET_5_CYCLE:
-									case OUTLET_6_CYCLE:
-									case OUTLET_7_CYCLE:
-									case OUTLET_8_CYCLE:
-									case RESTART_UPS_DELAY_TIME:
-										String result = "\"" + value + "\"";
-										populateMiddleAtlanticControl(deviceId, property, result);
-										break;
-									case RESTART_UPS:
-										populateMiddleAtlanticControl(deviceId, property, "true");
-										break;
-									case OUTLET_1_CYCLE_TIME:
-									case OUTLET_2_CYCLE_TIME:
-									case OUTLET_3_CYCLE_TIME:
-									case OUTLET_4_CYCLE_TIME:
-									case OUTLET_5_CYCLE_TIME:
-									case OUTLET_6_CYCLE_TIME:
-									case OUTLET_7_CYCLE_TIME:
-									case OUTLET_8_CYCLE_TIME:
-										String outletTime = getValueByRange(QSYSCoreConstant.MIN_CYCLE_TIME, QSYSCoreConstant.MAX_CYCLE_TIME, value);
-										populateMiddleAtlanticControl(deviceId, property, outletTime);
-										break;
-									default:
-										populateMiddleAtlanticControl(deviceId, property, value);
-										break;
-								}
-							}
-							Map<String, String> stats = device.getValue().getStats();
-							List<AdvancedControllableProperty> advancedControllableProperties = device.getValue().getAdvancedControllableProperties();
-							updateValueForTheControllableProperty(property, value, stats, advancedControllableProperties);
-						});
-			} else {
-				String[] splitProperty = property.split(QSYSCoreConstant.HASH);
+			String[] splitProperty = property.split(QSYSCoreConstant.HASH);
 
-				// Ex: Gain:Named Component#Gain Value Control
-				// metricName = Gain Value Control
-				// namedComponent = Named Component
-				String metricName = splitProperty[1];
-				List<String> splitComponent = Arrays.asList(splitProperty[0].split(QSYSCoreConstant.COLON, 2));
-				switch (splitComponent.get(0)) {
-					case QSYSCoreConstant.GAIN:
-						String gainComponent = splitComponent.size() > 1 ? splitComponent.get(1) : splitComponent.get(0);
-						gainControl(metricName, gainComponent, value);
-						updateGainControlByMetricName(metricName, value, property);
-						break;
-					default:
-						logger.debug("Component Name doesn't support: " + metricName);
-				}
+			// Ex: Gain:Named Component#Gain Value Control
+			// metricName = Gain Value Control
+			// namedComponent = Named Component
+			String metricName = splitProperty[1];
+			List<String> splitComponent = Arrays.asList(splitProperty[0].split(QSYSCoreConstant.COLON, 2));
+			switch (splitComponent.get(0)) {
+				case QSYSCoreConstant.GAIN:
+					String gainComponent = splitComponent.size() > 1 ? splitComponent.get(1) : splitComponent.get(0);
+					gainControl(metricName, gainComponent, value);
+					updateGainControlByMetricName(metricName, value, property);
+					break;
+				default:
+					logger.debug("Component Name doesn't support: " + metricName);
 			}
 			TimeUnit.MILLISECONDS.sleep(500);
 		} finally {
 			reentrantLock.unlock();
-		}
-	}
-
-	/**
-	 * Get value by range if the value out of range return the initial value
-	 *
-	 * @param min is the minimum value
-	 * @param max is the maximum value
-	 * @param value is the value to compare between min and max value
-	 * @return String is value or initial value
-	 */
-	private String getValueByRange(int min, int max, String value) {
-		int initial = min;
-		try {
-			int valueCompare = Integer.parseInt(value);
-			if (min <= valueCompare && valueCompare <= max) {
-				return String.valueOf(valueCompare);
-			}
-			if (valueCompare > max) {
-				initial = max;
-			}
-			return String.valueOf(initial);
-		} catch (Exception e) {
-			//example value  1xxxxxxx, return max value
-			//example value -1xxxxxxx, return min value
-			if (!value.contains(QSYSCoreConstant.DASH)) {
-				initial = max;
-			}
-			return String.valueOf(initial);
-		}
-	}
-
-	/**
-	 * Populate send sennheiser control
-	 *
-	 * @param metricName is the name of device
-	 * @param property is property name of device
-	 * @param value is value to send command
-	 */
-	private void populateSennheiserControl(String metricName, String property, String value) {
-		RpcMethod method = RpcMethod.SET_CONTROLS;
-		String request = String.format(RpcMethod.getRequest(), method.getName(), RpcMethod.getParamsString(method));
-		request = String.format(request, metricName, SennheiserDeviceMetric.getByMetric(property).getProperty(), value);
-		try {
-			List<String> response = Arrays.asList(qrcCommunicator.send(request));
-			if (response.size() > 1) {
-				JsonNode responseControl = objectMapper.readValue(response.get(1), JsonNode.class);
-
-				if (!responseControl.has(QSYSCoreConstant.RESULT) || !responseControl.get(QSYSCoreConstant.RESULT).asText().equals(QSYSCoreConstant.TRUE)) {
-					throw new IllegalStateException("Error: cannot set Sennheiser device value " + property);
-				}
-			}
-		} catch (Exception e) {
-			throw new ResourceNotReachableException("Error when control " + property + " device", e);
-		}
-	}
-
-	/**
-	 * Populate send MiddleAtlantic control
-	 *
-	 * @param metricName is the name of device
-	 * @param property is property name of device
-	 * @param value is value to send command
-	 */
-	private void populateMiddleAtlanticControl(String metricName, String property, String value) {
-		RpcMethod method = RpcMethod.SET_CONTROLS;
-		String request = String.format(RpcMethod.getRequest(), method.getName(), RpcMethod.getParamsString(method));
-		request = String.format(request, metricName, MiddleAtlanticMetric.getByMetric(property).getProperty(), value);
-		try {
-			List<String> response = Arrays.asList(qrcCommunicator.send(request));
-			if (response.size() > 1) {
-				JsonNode responseControl = objectMapper.readValue(response.get(1), JsonNode.class);
-
-				if (!responseControl.has(QSYSCoreConstant.RESULT) || !responseControl.get(QSYSCoreConstant.RESULT).asText().equals(QSYSCoreConstant.TRUE)) {
-					throw new IllegalStateException("Error: cannot set middle atlantic value " + property);
-				}
-			}
-		} catch (Exception e) {
-			throw new ResourceNotReachableException("Error when control " + property, e);
 		}
 	}
 
@@ -677,8 +524,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.OK_STATUS.equals(deviceStatus));
 					aggregatedDevice.setDeviceName(device.getKey());
 					aggregatedDevice.setProperties(device.getValue().getStats());
-					if (QSYSCoreConstant.MONITORING_PROXY_TYPE.equals(device.getValue().getType())) {
-						aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, QSYSCoreConstant.MONITORING_PROXY_TYPE);
+					if (QSYSCoreConstant.EXTERNAL.equals(device.getValue().getType())) {
+						aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, QSYSCoreConstant.EXTERNAL);
 					} else {
 						aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
 					}
@@ -982,11 +829,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			return;
 		}
 		existDeviceSet.add(componentInfo.getId());
-		QSYSPeripheralDevice device = null;
+		QSYSPeripheralDevice device;
 		if (componentInfo.getType().contains(QSYSCoreConstant.PLUGIN)) {
 			device = populateDeviceHasTypeIsPlugin(componentInfo);
 			if (device != null) {
-				device.setType(QSYSCoreConstant.MONITORING_PROXY_TYPE);
+				device.setType(QSYSCoreConstant.EXTERNAL);
 			}
 		} else {
 			device = createDeviceByType(componentInfo.getType());
@@ -1053,12 +900,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				return new VideoSourceDevice();
 			case QSYSCoreConstant.MONITORING_PROXY:
 				return new MonitoringProxyDevice();
-			case QSYSCoreConstant.SENNHEISER:
-				return new SennheiserDevice();
-			case QSYSCoreConstant.MIDDLE_ATLANTIC:
-				return new MiddleAtlanticDevice();
-			case QSYSCoreConstant.NETGEAR:
-				return new NetgearAVLineSwitchDevice();
 			default:
 				this.logger.error("Type " + type + " does not exist");
 				return null;
@@ -1353,7 +1194,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				case QSYSCoreConstant.CONTROL_INTERFACE_TYPE:
 					filterDeviceByQSYSTypeSet.add(QSYSCoreConstant.CONTROL_INTERFACE_DEVICE);
 					break;
-				case QSYSCoreConstant.MONITORING_PROXY_TYPE:
+				case QSYSCoreConstant.EXTERNAL:
 					filterDeviceByQSYSTypeSet.add(QSYSCoreConstant.MONITORING_PROXY);
 					break;
 				default:
@@ -1383,7 +1224,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				return QSYSCoreConstant.VIDEO_SOURCE_TYPE;
 			case QSYSCoreConstant.MONITORING_PROXY:
 			case QSYSCoreConstant.PLUGIN:
-				return QSYSCoreConstant.MONITORING_PROXY_TYPE;
+				return QSYSCoreConstant.EXTERNAL;
 			case QSYSCoreConstant.DISPLAY_DEVICE:
 				return QSYSCoreConstant.DISPLAY_TYPE;
 			case QSYSCoreConstant.PROCESSOR_DEVICE:

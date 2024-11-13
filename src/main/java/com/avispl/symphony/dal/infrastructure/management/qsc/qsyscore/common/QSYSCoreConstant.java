@@ -105,7 +105,7 @@ public class QSYSCoreConstant {
 	public static final String VIDEO_IO_TYPE = "Video I/O";
 	public static final String VIDEO_SOURCE_TYPE = "Video Source";
 	public static final String CONTROL_INTERFACE_TYPE = "Control Interface";
-	public static final String MONITORING_PROXY_TYPE = "External";
+	public static final String EXTERNAL = "External";
 	public static final String CAMERA_TYPE = "Camera";
 
 	//Date time
