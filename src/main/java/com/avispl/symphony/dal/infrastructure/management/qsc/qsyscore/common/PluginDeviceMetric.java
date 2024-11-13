@@ -8,7 +8,7 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
  * PluginDeviceMetric save all metric fields and corresponding response fields of the Plugin device
  *
  * @author Kevin / Symphony Dev Team<br>
- * Created on 6/29/2023
+ * Created on 11/13/2024
  * @since 1.0.0
  */
 public enum PluginDeviceMetric {
