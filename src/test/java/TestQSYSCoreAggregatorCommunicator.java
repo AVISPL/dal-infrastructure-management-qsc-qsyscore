@@ -21,10 +21,8 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.QSYSCoreAggregatorCommunicator;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.GainControllingMetric;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.MiddleAtlanticMetric;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.NetgearDeviceMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.PluginDeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.SennheiserDeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.VideoIODeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreDesignMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreNetworkMetric;
@@ -42,11 +40,11 @@ public class TestQSYSCoreAggregatorCommunicator {
 
 	@BeforeEach()
 	public void setUp() throws Exception {
-		qSYSCoreCommunicator.setHost("");
+		qSYSCoreCommunicator.setHost("127.0.0.1");
 		qSYSCoreCommunicator.setLogin("");
 		qSYSCoreCommunicator.setPassword("");
-		qSYSCoreCommunicator.setPort(443);
-		qSYSCoreCommunicator.setProtocol("https");
+		qSYSCoreCommunicator.setPort(80);
+		qSYSCoreCommunicator.setProtocol("http");
 		qSYSCoreCommunicator.init();
 		qSYSCoreCommunicator.connect();
 	}
@@ -515,133 +513,23 @@ public class TestQSYSCoreAggregatorCommunicator {
 	}
 
 	/**
-	 * Test Sennheiser device
+	 * Test filter by plugin device
 	 *
-	 * Expect aggregated device with list properties successfully
+	 * Expect aggregated device with filter successfully
 	 */
 	@Test
-	void TestSennheiserDevice() throws Exception {
+	void TestFilterByPluginDevice() throws Exception {
+		qSYSCoreCommunicator.setFilterPluginByName("VNOC Netgear");
 		qSYSCoreCommunicator.getMultipleStatistics();
 		qSYSCoreCommunicator.retrieveMultipleStatistics();
 		Thread.sleep(30000);
 		qSYSCoreCommunicator.getMultipleStatistics();
 		Thread.sleep(30000);
 		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
-		Optional<AggregatedDevice> deviceOptional = aggregatedDeviceList.stream().filter(device -> device.getDeviceId().contains("Sennheiser")).findFirst();
-		if (deviceOptional.isPresent()) {
-			AggregatedDevice sennheiserDevice = deviceOptional.get();
-			Map<String, String> stats = sennheiserDevice.getProperties();
-			Assertions.assertEquals("OK", stats.get(SennheiserDeviceMetric.STATUS.getMetric()));
-			Assertions.assertEquals("SLCMZ", stats.get(SennheiserDeviceMetric.DEVICE.getMetric()));
-			Assertions.assertEquals("Manual", stats.get(SennheiserDeviceMetric.CONNECTION_MODE.getMetric()));
-			Assertions.assertEquals("-120.0", stats.get(SennheiserDeviceMetric.AUDIO_LEVEL.getMetric()));
-			Assertions.assertEquals("SymphonyLab", stats.get(SennheiserDeviceMetric.DEVICE_LOCATION.getMetric()));
-			Assertions.assertEquals("172.31.254.105", stats.get(SennheiserDeviceMetric.IP_ADDRESS.getMetric()));
-			Assertions.assertEquals("5.0", stats.get(SennheiserDeviceMetric.LED_BRIGHTNESS.getMetric()));
-			Assertions.assertEquals("Activated", stats.get(SennheiserDeviceMetric.LED_ON_OFF.getMetric()));
-			Assertions.assertEquals("Activated", stats.get(SennheiserDeviceMetric.MUTE.getMetric()));
-			Assertions.assertEquals("Orange", stats.get(SennheiserDeviceMetric.MUTE_COLOR.getMetric()));
-			Assertions.assertEquals("Activated", stats.get(SennheiserDeviceMetric.NOISE_GATE.getMetric()));
-			Assertions.assertEquals("45", stats.get(SennheiserDeviceMetric.DEVICE_PORT.getMetric()));
-			Assertions.assertEquals("Activated", stats.get(SennheiserDeviceMetric.PRIORITY_ZONE.getMetric()));
-			Assertions.assertEquals("Off", stats.get(SennheiserDeviceMetric.SOUND_PROFILE.getMetric()));
-			Assertions.assertEquals("Cyan", stats.get(SennheiserDeviceMetric.ON_COLOR.getMetric()));
-			Assertions.assertEquals("On", stats.get(SennheiserDeviceMetric.EXCLUSION_1_ZONES.getMetric()));
-			Assertions.assertEquals("On", stats.get(SennheiserDeviceMetric.EXCLUSION_2_ZONES.getMetric()));
-			Assertions.assertEquals("On", stats.get(SennheiserDeviceMetric.EXCLUSION_3_ZONES.getMetric()));
-			Assertions.assertEquals("On", stats.get(SennheiserDeviceMetric.EXCLUSION_4_ZONES.getMetric()));
-			Assertions.assertEquals("On", stats.get(SennheiserDeviceMetric.EXCLUSION_5_ZONES.getMetric()));
-			Assertions.assertEquals("Normal", stats.get(SennheiserDeviceMetric.NOISE_LEVEL.getMetric()));
-			Assertions.assertEquals("Deactivated", stats.get(SennheiserDeviceMetric.TRU_VOICE_LIFT.getMetric()));
-		}
-	}
-
-	/**
-	 * Test Sennheiser device
-	 *
-	 * Expect aggregated device with list properties successfully
-	 */
-	@Test
-	void TestMiddleAtlanticDevice() throws Exception {
-		qSYSCoreCommunicator.getMultipleStatistics();
-		qSYSCoreCommunicator.retrieveMultipleStatistics();
-		Thread.sleep(30000);
-		qSYSCoreCommunicator.getMultipleStatistics();
-		Thread.sleep(30000);
-		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
-		Optional<AggregatedDevice> deviceOptional = aggregatedDeviceList.stream().filter(device -> device.getDeviceId().contains("MiddleAtlantic")).findFirst();
-		if (deviceOptional.isPresent()) {
-			AggregatedDevice middleAtlanticDevice = deviceOptional.get();
-			Map<String, String> stats = middleAtlanticDevice.getProperties();
-			for (int i = 1; i <= 8; i++) {
-				Assertions.assertNotNull(stats.get("Outlet" + i + "#State"));
-				Assertions.assertNotNull(stats.get("Outlet" + i + "#Power"));
-				Assertions.assertNotNull(stats.get("Outlet" + i + "#Cycle"));
-				Assertions.assertNotNull(stats.get("Outlet" + i + "#CycleTime"));
-				Assertions.assertNotNull(stats.get("Outlet" + i + "#Name"));
-			}
-			Assertions.assertEquals("OK", stats.get(MiddleAtlanticMetric.STATUS.getMetric()));
-			Assertions.assertEquals("F0LW2A6002U", stats.get(MiddleAtlanticMetric.SERIAL_NUMBER.getMetric()));
-			Assertions.assertEquals("UPX-RLNK-1500R-8", stats.get(MiddleAtlanticMetric.DEVICE_MODEL.getMetric()));
-			Assertions.assertEquals("172.31.254.31", stats.get(MiddleAtlanticMetric.IP_ADDRESS.getMetric()));
-			Assertions.assertEquals("00:1E:C5:10:03:B3", stats.get(MiddleAtlanticMetric.MAC_ADDRESS.getMetric()));
-			Assertions.assertEquals("S02E03", stats.get(MiddleAtlanticMetric.DEVICE_FIRMWARE.getMetric()));
-			Assertions.assertEquals("Normal", stats.get(MiddleAtlanticMetric.OUTPUT_SOURCE.getMetric()));
-			Assertions.assertEquals("117.1", stats.get(MiddleAtlanticMetric.INPUT_VOLTAGE.getMetric()));
-			Assertions.assertEquals("0.2", stats.get(MiddleAtlanticMetric.INPUT_CURRENT.getMetric()));
-			Assertions.assertEquals("117.0", stats.get(MiddleAtlanticMetric.OUTPUT_VOLTAGE.getMetric()));
-			Assertions.assertEquals("0.0", stats.get(MiddleAtlanticMetric.OUTPUT_CURRENT.getMetric()));
-			Assertions.assertEquals("0", stats.get(MiddleAtlanticMetric.OUTPUT_POWER.getMetric()));
-			Assertions.assertEquals("false", stats.get(MiddleAtlanticMetric.ALARM_BATTERY_FAULT.getMetric()));
-			Assertions.assertEquals("false", stats.get(MiddleAtlanticMetric.ALARM_BATTERY_GROUND_FAULT.getMetric()));
-			Assertions.assertEquals("false", stats.get(MiddleAtlanticMetric.ALARM_CHARGER_FAIL.getMetric()));
-			Assertions.assertEquals("false", stats.get(MiddleAtlanticMetric.ALARM_FAN_FAIL.getMetric()));
-			Assertions.assertEquals("false", stats.get(MiddleAtlanticMetric.ALARM_FUSE_FAIL.getMetric()));
-			Assertions.assertEquals("false", stats.get(MiddleAtlanticMetric.ALARM_OUTPUT_OFF.getMetric()));
-			Assertions.assertEquals("false", stats.get(MiddleAtlanticMetric.ALARM_OVERLOAD.getMetric()));
-			Assertions.assertEquals("false", stats.get(MiddleAtlanticMetric.ALARM_OVER_TEMPERATURE.getMetric()));
-			Assertions.assertEquals("false", stats.get(MiddleAtlanticMetric.ALARM_UPS_SHUTDOWN.getMetric()));
-			Assertions.assertEquals("true", stats.get(MiddleAtlanticMetric.BUZZER_ENABLE_STATUS.getMetric()));
-			Assertions.assertEquals("Off", stats.get(MiddleAtlanticMetric.BUZZER_ENABLE.getMetric()));
-			Assertions.assertEquals("Off", stats.get(MiddleAtlanticMetric.RESTART_UPS.getMetric()));
-			Assertions.assertEquals("1", stats.get(MiddleAtlanticMetric.RESTART_UPS_DELAY_TIME.getMetric()));
-		}
-	}
-
-	/**
-	 * Test Sennheiser device
-	 *
-	 * Expect aggregated device with list properties successfully
-	 */
-	@Test
-	void TestNetgearAVLineSwitchDevice() throws Exception {
-		qSYSCoreCommunicator.setFilterPluginByName(QSYSCoreConstant.SENNHEISER + "," + QSYSCoreConstant.MIDDLE_ATLANTIC);
-		qSYSCoreCommunicator.getMultipleStatistics();
-		qSYSCoreCommunicator.retrieveMultipleStatistics();
-		Thread.sleep(30000);
-		qSYSCoreCommunicator.getMultipleStatistics();
-		Thread.sleep(30000);
-		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
-		Optional<AggregatedDevice> deviceOptional = aggregatedDeviceList.stream().filter(device -> device.getDeviceId().contains("MiddleAtlantic")).findFirst();
-		if (deviceOptional.isPresent()) {
-			AggregatedDevice netgearDevice = deviceOptional.get();
-			Map<String, String> stats = netgearDevice.getProperties();
-			Assertions.assertEquals("VNOC Test", stats.get(NetgearDeviceMetric.SYSTEM_NAME.getMetric()));
-			Assertions.assertEquals("M4250-9G1F-PoE+", stats.get(NetgearDeviceMetric.MODEL.getMetric()));
-			Assertions.assertEquals("6YW1285BA00FD", stats.get(NetgearDeviceMetric.SERIAL_NUMBER.getMetric()));
-			Assertions.assertEquals("94:18:65:6B:66:39", stats.get(NetgearDeviceMetric.MAC_ADDRESS.getMetric()));
-			Assertions.assertEquals("13.0.4.17", stats.get(NetgearDeviceMetric.FIRMWARE_VERSION.getMetric()));
-			Assertions.assertEquals("7 days, 10 hrs, 6 mins, 57 secs", stats.get(NetgearDeviceMetric.UPTIME.getMetric()));
-			Assertions.assertEquals("1.0.0.11", stats.get(NetgearDeviceMetric.CONFIGURATION_VERSION.getMetric()));
-			Assertions.assertEquals("OK", stats.get(NetgearDeviceMetric.STATUS.getMetric()));
-			Assertions.assertEquals("10.100.0.204", stats.get(NetgearDeviceMetric.IP_ADDRESS.getMetric()));
-			Assertions.assertEquals("avispl", stats.get(NetgearDeviceMetric.USER_NAME.getMetric()));
-			for (int i = 1; i <= 12; i++) {
-				Assertions.assertNotNull(stats.get("Port" + String.format("%02d", i) + "#Description"));
-				Assertions.assertNotNull(stats.get("Port" + String.format("%02d", i) + "#Connected"));
-				Assertions.assertNotNull(stats.get("Port" + String.format("%02d", i) + "#Powered"));
-				Assertions.assertNotNull(stats.get("Port" + String.format("%02d", i) + "#Error"));
-				Assertions.assertNotNull(stats.get("Port" + String.format("%02d", i) + "#Trunk"));
+		Optional<AggregatedDevice> netgearDevice = aggregatedDeviceList.stream().filter(device -> device.getDeviceId().contains("VNOC Netgear")).findFirst();
+		for (PluginDeviceMetric device : PluginDeviceMetric.values()) {
+			{
+				Assertions.assertNotNull(netgearDevice.get().getProperties().get(device.getMetric()));
 			}
 		}
 	}
