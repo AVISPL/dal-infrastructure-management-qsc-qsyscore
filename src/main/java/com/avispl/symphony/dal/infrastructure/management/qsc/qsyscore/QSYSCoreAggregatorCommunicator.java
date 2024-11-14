@@ -522,13 +522,19 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					aggregatedDevice.setDeviceId(device.getKey());
 					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
 					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.OK_STATUS.equals(deviceStatus));
-					aggregatedDevice.setDeviceName(device.getKey());
 					aggregatedDevice.setProperties(device.getValue().getStats());
+					String name = device.getKey();
 					if (QSYSCoreConstant.EXTERNAL.equals(device.getValue().getType())) {
+						String deviceName = device.getValue().getStats().get(PluginDeviceMetric.DEVICE_NAME.getMetric());
+						if (StringUtils.isNotNullOrEmpty(deviceName) && !QSYSCoreConstant.DEFAUL_DATA.equalsIgnoreCase(deviceName)) {
+							name = deviceName;
+						}
 						aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, QSYSCoreConstant.EXTERNAL);
+						device.getValue().getStats().remove(PluginDeviceMetric.DEVICE_NAME.getMetric());
 					} else {
 						aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
 					}
+					aggregatedDevice.setDeviceName(name);
 					provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
 					aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
 					resultAggregatedDeviceList.add(aggregatedDevice);

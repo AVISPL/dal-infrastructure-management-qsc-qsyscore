@@ -17,6 +17,7 @@ public enum PluginDeviceMetric {
 	SERIAL_NUMBER("SerialNumber", "SerialNumber"),
 	MAC_ADDRESS("MACAddress", "MACAddress"),
 	IP_ADDRESS("IPAddress", "IPAddress"),
+	DEVICE_NAME("DeviceName", "DeviceName"),
 	FIRMWARE_VERSION("FirmwareVersion", "DeviceFirmware");
 
 	private final String metric;
