@@ -76,6 +76,7 @@ public class QSYSCoreConstant {
 			Arrays.asList(CAMERA_DEVICE, PROCESSOR_DEVICE, DISPLAY_DEVICE, STREAM_INPUT_DEVICE, STREAM_OUTPUT_DEVICE, VIDEO_IO_DEVICE, VIDEO_SOURCE_DEVICE, CONTROL_INTERFACE_DEVICE, MONITORING_PROXY,
 					PLUGIN));
 	public static final List<String> PLUGIN_LIST = Arrays.asList(SENNHEISER, MIDDLE_ATLANTIC, NETGEAR);
+	public static final List<String> LIST_ONLINE_STATUS = Arrays.asList("Ok", "Compromised", "Fault","Initializing");
 	/**
 	 * Token timeout is 1 hour ( 60 minutes), as this case reserve 5 minutes to make sure we never failed because of the timeout
 	 */

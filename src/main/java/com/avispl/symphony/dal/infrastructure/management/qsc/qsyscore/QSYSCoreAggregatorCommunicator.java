@@ -521,7 +521,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					AggregatedDevice aggregatedDevice = new AggregatedDevice();
 					aggregatedDevice.setDeviceId(device.getKey());
 					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
-					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.OK_STATUS.equals(deviceStatus));
+					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.LIST_ONLINE_STATUS.stream()
+							.anyMatch(status -> status.equalsIgnoreCase(deviceStatus)));
 					aggregatedDevice.setProperties(device.getValue().getStats());
 					String name = device.getKey();
 					if (QSYSCoreConstant.EXTERNAL.equals(device.getValue().getType())) {
