@@ -48,6 +48,7 @@ public class QSYSCoreConstant {
 	public static final String ZERO = "0";
 	public static final String LAN_A = "LAN_A";
 	public static final String LAN_B = "LAN_B";
+	public static final String CHANNEL = "Channel";
 	public static final String HOSTNAME = "Hostname";
 	public static final String SPECIAL_CHARS_PATTERN = ".*[~!@#$%^&\\\\'].*|.*<(\\?).*|.*(\\<)(\\/).*";
 

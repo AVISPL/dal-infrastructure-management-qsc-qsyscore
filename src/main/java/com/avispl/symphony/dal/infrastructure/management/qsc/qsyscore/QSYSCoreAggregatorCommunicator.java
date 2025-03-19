@@ -486,14 +486,13 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				List<AdvancedControllableProperty> advancedControllableProperties = localExtStats.getControllableProperties();
 				String metricProperty = getMetricProperty(metricName, deviceType);
 
-				if(StringUtils.isNotNullOrEmpty(metricProperty) && splitProperty[0].contains("Channel")){
-					String indexChannel = splitProperty[0].replace("Channel", "");
-					String metric = metricProperty.replace(QSYSCoreConstant.FORMAT_STRING, indexChannel );
-					handleControlAggregated(metric, deviceId, value);
-					updateValueForTheControllableProperty(property, value, stats, advancedControllableProperties );
-				} else {
+				if (StringUtils.isNotNullOrEmpty(metricProperty)) {
+					if (splitProperty[0].contains(QSYSCoreConstant.CHANNEL)) {
+						String indexChannel = splitProperty[0].replace(QSYSCoreConstant.CHANNEL, "");
+						metricProperty = metricProperty.replace(QSYSCoreConstant.FORMAT_STRING, indexChannel);
+					}
 					handleControlAggregated(metricProperty, deviceId, value);
-					updateValueForTheControllableProperty(property, value, stats, advancedControllableProperties );
+					updateValueForTheControllableProperty(property, value, stats, advancedControllableProperties);
 				}
 			}
 			List<String> splitComponent = Arrays.asList(splitProperty[0].split(QSYSCoreConstant.COLON, 2));
@@ -1074,11 +1073,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private void handleControlAggregated(String metricName, String property, String value) {
 		RpcMethod method = RpcMethod.SET_CONTROLS;
 		String request = String.format(RpcMethod.getRequest(), method.getName(), RpcMethod.getParamsString(method));
-		if ("1".equals(value) || "0".equals(value)) {
-			request = String.format(request, property, metricName, value);
-		} else {
-			request = String.format(request, property, metricName, "\"" + value + "\"");
-		}
+		request = String.format(request, property, metricName,
+				("1".equals(value) || "0".equals(value)) ? value : "\"" + value + "\"");
+
 		try {
 			List<String> response = Arrays.asList(qrcCommunicator.send(request));
 			if (response.size() > 1) {
@@ -1124,15 +1121,12 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private String getMetricProperty(String metricName, String deviceModel) {
 		Class<? extends DeviceMetric> metricClass = getDeviceMetricClass(deviceModel);
-		if (metricClass == null) {
-			return null;
-		}
-		for (DeviceMetric metric : metricClass.getEnumConstants()) {
-			if (metric.getMetric().contains(metricName)) {
-				return metric.getProperty();
-			}
-		}
-		return null;
+		return (metricClass == null) ? null
+				: Arrays.stream(metricClass.getEnumConstants())
+						.filter(metric -> metric.getMetric().contains(metricName))
+						.map(DeviceMetric::getProperty)
+						.findFirst()
+						.orElse(null);
 	}
 
 	/**
