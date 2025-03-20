@@ -25,12 +25,12 @@ public enum AmplifierDeviceMetric implements DeviceMetric {
 	VRAIL_1("VRail1(V)", "rail.voltage.1"),
 	VRAIL_2("VRail2(V)", "rail.voltage.2"),
 	FAN_RPM("Fan(RPM)", "system.fan.1.speed"),
-	METER_SELECT("MeterSelect(RMS)", "peak.rms.select"),
+	METER_SELECT("MeterSelect", "peak.rms.select"),
 
 	AC_CURRENT("PowerManagement#ACCurrent(A)", "ac.current"),
 	AC_VOLTAGE("PowerManagement#ACVoltage(V)", "ac.voltage"),
 	POWER_SAVE_THRESHOLD("PowerManagement#PowerSaveThreshold(dB)", "powersave.threshold"),
-	POWER_SAVE_TIMEOUT("PowerManagement#PowerSaveTimeout", "powersave.timeout"),
+	POWER_SAVE_TIMEOUT("PowerManagement#PowerSaveTimeout(m)", "powersave.timeout"),
 	DISABLE_POWER_SAVE("PowerManagement#DisablePowerSave", "powersave.disable"),
 
 	CHANNEL_MUTE("Channel%s#Mute", "channel.%s.backup.mute"),
@@ -43,7 +43,7 @@ public enum AmplifierDeviceMetric implements DeviceMetric {
 	CHANNEL_SHORT("Channel%s#Short", "channel.%s.output.short"),
 	CHANNEL_TEMP("Channel%s#Temperature(C)", "channel.%s.temperature"),
 	CHANNEL_INPUT("Channel%s#Input(dB)", "channel.%s.input.meter"),
-	CHANNEL_METER("Channel%s#Meter(dB)", "channel.%s.output.meter"),
+	CHANNEL_METER("Channel%s#Meter(dBFS)", "channel.%s.output.meter"),
 	CHANNEL_HEAD_ROOM("Channel%s#Headroom(dB)", "channel.%s.headroom"),
 	CHANNEL_CURRENT("Channel%s#Current(A)", "channel.%s.current"),
 	CHANNEL_VOLTAGE("Channel%s#Voltage(V)", "channel.%s.voltage"),

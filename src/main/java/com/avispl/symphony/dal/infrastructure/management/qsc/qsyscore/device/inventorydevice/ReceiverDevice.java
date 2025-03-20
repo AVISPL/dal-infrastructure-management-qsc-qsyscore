@@ -71,16 +71,8 @@ public class ReceiverDevice extends QSYSPeripheralDevice {
 								String.valueOf(status)
 						);
 						break;
-					case INTERFACE:
-						String[] interfaceOption = { "LAN A", "LAN B" };
-						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createDropdown(metricName, interfaceOption, value), value);
-						break;
 					case STATUS_LED:
 						this.getStats().put(metricName, StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
-						break;
-					case NETWORK_RX_BUFFER:
-						String[] networkTXOptions = { "Default", "Extra 1ms", "Extra 2ms", "Extra 5ms" };
-						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createDropdown(metricName, networkTXOptions, value), value);
 						break;
 					case CHANNEL_GAIN:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),

@@ -19,7 +19,7 @@ public enum ReceiverDeviceMetric implements DeviceMetric {
 	STATUS("Status", "status"),
 	STATUS_LED("StatusLed", "status.led"),
 
-	CHANNEL_PEAK_INPUT_LEVEL("Channel%s#PeakInnputLevel(dB)", "channel.%s.digital.input.level"),
+	CHANNEL_PEAK_INPUT_LEVEL("Channel%s#PeakInputLevel(dBFS)", "channel.%s.digital.input.level"),
 	CHANNEL_INVERT("Channel%s#Invert", "channel.%s.input.invert"),
 	CHANNEL_MUTE("Channel%s#Mute", "channel.%s.input.mute"),
 	CHANNEL_GAIN("Channel%s#Gain(dB)", "channel.%s.input.gain");

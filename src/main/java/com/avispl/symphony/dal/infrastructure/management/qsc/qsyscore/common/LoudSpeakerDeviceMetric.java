@@ -15,7 +15,7 @@ public enum LoudSpeakerDeviceMetric implements DeviceMetric {
 	STATUS_LED("StatusLed", "status.led"),
 	MUTE("Mute", "mute"),
 	GAIN("Gain(dB)", "gain"),
-	DELAY("Delay(ms)", "architectural.delay"),
+	DELAY("Delay(s)", "architectural.delay"),
 	METER_SELECT("MeterSelect", "peak.rms.select"),
 
 	FULL_RANGE_MUTE("Fullrange#Mute", "band.0.mute"),

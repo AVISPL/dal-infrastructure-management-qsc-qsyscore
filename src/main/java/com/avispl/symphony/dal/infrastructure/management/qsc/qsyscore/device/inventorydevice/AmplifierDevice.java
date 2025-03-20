@@ -55,7 +55,8 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 			AmplifierDeviceMetric.VRAIL_2,
 			AmplifierDeviceMetric.CHANNEL_VOLTAGE,
 			AmplifierDeviceMetric.CHANNEL_POWER,
-			AmplifierDeviceMetric.METER_SELECT
+			AmplifierDeviceMetric.METER_SELECT,
+			AmplifierDeviceMetric.PSU_TEMP
 	);
 
 	/**
@@ -71,6 +72,7 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 			.put("Hz", QSYSCoreConstant.EMPTY)
 			.put("ms", QSYSCoreConstant.EMPTY)
 			.put("°C", QSYSCoreConstant.EMPTY)
+			.put("C", QSYSCoreConstant.EMPTY)
 			.put("RMS", QSYSCoreConstant.EMPTY)
 			.build();
 

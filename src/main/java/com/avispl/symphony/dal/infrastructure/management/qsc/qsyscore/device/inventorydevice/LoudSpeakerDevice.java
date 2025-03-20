@@ -106,6 +106,13 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 								metric.getMetric(), "-100", "20", -100f, 20f, Float.parseFloat(value)), value);
 						this.getStats().put("GainCurrentValue(dB)", uppercaseFirstCharacter(value));
 						break;
+					case FULL_RANGE_LIMITER:
+						this.getStats().put(
+								metric.getMetric(),
+								StringUtils.isNotNullOrEmpty(value)
+										? uppercaseFirstCharacter(value.equals("-0") ? "0" : value)
+										: QSYSCoreConstant.DEFAUL_DATA
+						);						break;
 					case DELAY:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metric.getMetric(), "0", "2", 0f, 2f, Float.parseFloat(value)), value);
