@@ -5,8 +5,10 @@
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableMap;
@@ -24,6 +26,9 @@ import com.avispl.symphony.dal.util.StringUtils;
  * @since 1.0.0
  */
 public class AmplifierDevice extends QSYSPeripheralDevice {
+
+	private final Map<String, Integer> previousChannelMuteValues = new HashMap<>();
+
 	/**
 	 * Manage are control of device
 	 *
@@ -45,7 +50,7 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 			AmplifierDeviceMetric.CHANNEL_GAIN,
 			AmplifierDeviceMetric.CHANNEL_INPUT,
 			AmplifierDeviceMetric.CHANNEL_HEAD_ROOM,
-			AmplifierDeviceMetric.CHANNEL_METER,
+			AmplifierDeviceMetric.CHANNEL_OUTPUT,
 			AmplifierDeviceMetric.POWER_SAVE_THRESHOLD,
 			AmplifierDeviceMetric.CHANNEL_TEMP,
 			AmplifierDeviceMetric.AC_CURRENT,
@@ -83,6 +88,8 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 	 */
 	@Override
 	public void monitoringDevice(JsonNode deviceControl) {
+		int muteAll = 0;
+		int meterValue = 0;
 		this.getStats().clear();
 		this.getAdvancedControllableProperties().clear();
 
@@ -98,19 +105,16 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 				}
 				String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
 				if (METRIC_LIST.contains(metric)) {
-					for (Map.Entry<String, String> entry : UNIT_REPLACEMENTS.entrySet()) {
+					for (Entry<String, String> entry : UNIT_REPLACEMENTS.entrySet()) {
 						value = value.replace(entry.getKey(), entry.getValue());
 					}
 				}
 				String metricName = getFormattedMetricName(metric, control);
 				switch (metric){
 					case ON_STANDBY:
-					case MUTE_ALL:
-					case POWER_METERS:
 					case GAIN_LOCK:
 					case MUTE_LOCK:
 					case DISABLE_POWER_SAVE:
-					case CHANNEL_MUTE:
 						int status = value.equalsIgnoreCase("enabled") || value.equalsIgnoreCase("true")
 								|| value.equalsIgnoreCase("on") ? 1 : 0;
 						addAdvancedControlProperties(
@@ -119,6 +123,53 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 								createSwitch(metricName, status, "Off", "On"),
 								String.valueOf(status)
 						);
+						break;
+					case POWER_METERS:
+						meterValue = value.equalsIgnoreCase("enabled") ? 1 : 0;
+						addAdvancedControlProperties(
+								this.getAdvancedControllableProperties(),
+								getStats(),
+								createSwitch(metricName, meterValue, "Off", "On"),
+								String.valueOf(meterValue)
+						);
+						break;
+					case CHANNEL_VOLTAGE:
+					case CHANNEL_CURRENT:
+						if(meterValue == 0){
+							this.getStats().remove(metricName);
+						} else {
+							this.getStats().put(metricName, StringUtils.isNotNullOrEmpty(value) ? uppercaseFirstCharacter(value) : QSYSCoreConstant.DEFAUL_DATA);
+						}
+						break;
+					case MUTE_ALL:
+						muteAll = value.equalsIgnoreCase("unmuted") ? 1 : 0;
+						addAdvancedControlProperties(
+								this.getAdvancedControllableProperties(),
+								getStats(),
+								createSwitch(metricName, muteAll, "Off", "On"),
+								String.valueOf(muteAll)
+						);
+						break;
+					case CHANNEL_MUTE:
+						int channelMute = value.equalsIgnoreCase("unmuted") ? 1 : 0;
+						if(muteAll == 1) {
+							previousChannelMuteValues.putIfAbsent(metricName, channelMute);
+							addAdvancedControlProperties(
+									this.getAdvancedControllableProperties(),
+									getStats(),
+									createSwitch(metricName, muteAll, "Off", "On"),
+									String.valueOf(muteAll)
+							);
+						} else {
+							int previousValue = previousChannelMuteValues.getOrDefault(metricName, channelMute);
+							previousChannelMuteValues.remove(metricName);
+							addAdvancedControlProperties(
+									this.getAdvancedControllableProperties(),
+									getStats(),
+									createSwitch(metricName, previousValue, "Off", "On"),
+									String.valueOf(previousValue)
+							);
+						}
 						break;
 					case METER_SELECT:
 						String[] options = { "Peak", "RMS" };

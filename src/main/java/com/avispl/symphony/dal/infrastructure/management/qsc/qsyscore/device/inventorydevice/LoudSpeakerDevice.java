@@ -41,9 +41,8 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 	 */
 	private static final List<LoudSpeakerDeviceMetric> METRIC_LIST = Arrays.asList(
 			LoudSpeakerDeviceMetric.FULL_RANGE_LIMITER,
-			LoudSpeakerDeviceMetric.FULL_RANGE_GAIN,
 			LoudSpeakerDeviceMetric.GAIN,
-			LoudSpeakerDeviceMetric.FULL_RANGE_HIGHT_PASS_FREQ,
+			LoudSpeakerDeviceMetric.FULL_RANGE_HIGH_PASS_FREQ,
 			LoudSpeakerDeviceMetric.FULL_RANGE_CURRENT,
 			LoudSpeakerDeviceMetric.FULL_RANGE_POWER,
 			LoudSpeakerDeviceMetric.FULL_RANGE_VOLTAGE,
@@ -130,7 +129,7 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 							this.getStats().put(metric.getMetric(), QSYSCoreConstant.DEFAUL_DATA);
 						}
 						break;
-					case FULL_RANGE_HIGHT_PASS_FREQ:
+					case FULL_RANGE_HIGH_PASS_FREQ:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metric.getMetric(), "30", "300", 30f, 300f, Float.parseFloat(value)), value);
 						this.getStats().put("Fullrange#HighPassFreqCurrentValue(Hz)", uppercaseFirstCharacter(value));

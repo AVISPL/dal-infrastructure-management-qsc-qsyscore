@@ -14,8 +14,9 @@ public enum TransmitterDeviceMetric implements DeviceMetric {
 	ENABLE("Connection#Enable", "enable"),
 	INTERFACE("Connection#Interface", "interface"),
 	NETWORK_TX_BUFFER("Connection#NetworkTxBuffer", "network.buffer"),
+	ENCODING("Connection#Encoding", "encoding"),
 	STREAM_NAME("Connection#StreamName", "stream.name"),
-	MUTIL_CAST_ADDRESS("Connection#MutilcastAddress", "address"),
+	MULTI_CAST_ADDRESS("Connection#MulticastAddress", "address"),
 
 	STATUS("Status", "status"),
 	STATUS_LED("StatusLed", "status.led"),

@@ -29,10 +29,8 @@ public enum LoudSpeakerDeviceMetric implements DeviceMetric {
 	FULL_RANGE_VOLTAGE("Fullrange#Voltage(V)", "band.0.voltage"),
 	FULL_RANGE_CURRENT("Fullrange#Current(A)", "band.0.current"),
 	FULL_RANGE_POWER("Fullrange#Power(W)", "band.0.power"),
-	FULL_RANGE_GAIN("Fullrange#Gain(dB)", "band.0.monitor.gain"),
 	FULL_RANGE_LIMITER("Fullrange#Limiter(dB)", "band.0.limiter.reduction"),
-	FULL_RANGE_HIGHT_PASS_FREQ("Fullrange#HighPassFreq(Hz)", "band.0.line.voltage.hp.frequency"),
-	FULL_RANGE_LISTEN("Fullrange#Listen", "band.0.monitor.listen"),
+	FULL_RANGE_HIGH_PASS_FREQ("Fullrange#HighPassFreq(Hz)", "band.0.line.voltage.hp.frequency"),
 	;
 
 	private final String metric;
