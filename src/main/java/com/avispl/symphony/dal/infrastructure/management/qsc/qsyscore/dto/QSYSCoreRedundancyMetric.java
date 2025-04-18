@@ -5,28 +5,25 @@
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto;
 
 /**
- * QSYSCoreDesignMetric contain all metric of device
+ * QSYSCoreMonitoringMetric contain all metric of device
  *
- * @author Kevin / Symphony Dev Team<br>
- * Created on 6/14/2023
- * @since 1.0.0
+ * @author Harry / Symphony Dev Team<br>
+ * @since 1.0.1
  */
-public enum QSYSCoreDesignMetric {
-
-	DESIGN_NAME("DesignName"),
-	DESIGN_CODE("DesignCode"),
-	PLATFORM("Platform"),
-	IS_REDUNDANCY("Redundancy"),
-	STATE("State");
+public enum QSYSCoreRedundancyMetric {
+	BACKUP_ACTIVE("BackupActive"),
+	PRIMARY_ACTIVE("PrimaryActive"),
+	PRIMARY_NAME("PrimaryName"),
+	BACKUP_NAME("BackupName");
 
 	private final String name;
 
 	/**
-	 * QSYSCoreDesignMetric constructor
+	 * QSYSCoreRedundancyMetric constructor
 	 *
 	 * @param name Name of QSYS Core monitoring metric
 	 */
-	QSYSCoreDesignMetric(String name) {
+	QSYSCoreRedundancyMetric(String name) {
 		this.name = name;
 	}
 

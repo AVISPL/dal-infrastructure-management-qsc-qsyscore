@@ -24,6 +24,8 @@ public class DesignResult {
 	private String designName;
 	@JsonAlias("DesignCode")
 	private String designCode;
+	@JsonAlias("IsRedundant")
+	private String isRedundant;
 
 	/**
 	 * Retrieves {@link #platform}
@@ -95,5 +97,23 @@ public class DesignResult {
 	 */
 	public void setDesignCode(String designCode) {
 		this.designCode = designCode;
+	}
+
+	/**
+	 * Retrieves {@link #isRedundant}
+	 *
+	 * @return value of {@link #isRedundant}
+	 */
+	public String getIsRedundant() {
+		return isRedundant;
+	}
+
+	/**
+	 * Sets {@link #isRedundant} value
+	 *
+	 * @param isRedundant new value of {@link #isRedundant}
+	 */
+	public void setIsRedundant(String isRedundant) {
+		this.isRedundant = isRedundant;
 	}
 }

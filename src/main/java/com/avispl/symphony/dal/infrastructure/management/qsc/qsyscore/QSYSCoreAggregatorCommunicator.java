@@ -22,6 +22,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.util.CollectionUtils;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -50,7 +51,9 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.Device
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.LoginInfo;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreDesignMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreNetworkMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreRedundancyMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreSystemMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.RedundancyWrapper;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.rpc.RpcMethod;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.statistics.DynamicStatisticsDefinitions;
 import com.avispl.symphony.dal.util.ControllablePropertyFactory;
@@ -363,6 +366,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		reentrantLock.lock();
 		try {
 			if (!isEmergencyDelivery) {
+				deviceMap.clear();
 				Map<String, String> stats = new HashMap<>();
 				List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
 
@@ -420,7 +424,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						}
 					}
 				}
-
+				stats.put("NumberOfDevices", String.valueOf(currentSizeDeviceMap));
 				populateAggregatedMonitoringData(currentSizeDeviceMap);
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setControllableProperties(controllableProperties);
@@ -705,6 +709,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private void populateQSYSAggregatorMonitoringData(Map<String, String> stats) throws Exception {
 		retrieveQSYSAggregatorInfo(stats);
 		retrieveQSYSAggregatorNetworkInfo(stats);
+		retrieveQSYSAggregatorRedundancy(stats);
 		retrieveQSYSAggregatorDesign(stats);
 	}
 
@@ -733,6 +738,35 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				stats.put(propertiesName.getName(), QSYSCoreConstant.DEFAUL_DATA);
 			}
 			logger.error("Error when retrieve aggregator information", e);
+		}
+	}
+
+	/**
+	 * Get information of redundancy group
+	 *
+	 * @param stats Map store all information
+	 */
+	private void retrieveQSYSAggregatorRedundancy(Map<String, String> stats) {
+		try{
+			String response = doGet(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.LIST_ITEM_ACTIVE));
+			JsonNode root = objectMapper.readTree(response);
+			JsonNode dataNode = root.get("data");
+			List<RedundancyWrapper> redundancyList = objectMapper.readValue(
+					dataNode.toString(),
+					new TypeReference<List<RedundancyWrapper>>() {}
+			);
+			Optional<RedundancyWrapper> optional = redundancyList.stream().findFirst();
+			if (optional.isPresent()) {
+				RedundancyWrapper processorRedundancy = optional.get();
+				for (QSYSCoreRedundancyMetric metric : QSYSCoreRedundancyMetric.values()) {
+					stats.put(
+							QSYSCoreConstant.REDUNDANCY + QSYSCoreConstant.HASH + metric.getName(),
+							getDataOrDefaultDataIfNull(processorRedundancy.getValueByMetricName(metric))
+					);
+				}
+			}
+		}catch (Exception e) {
+			logger.error("Error when retrieve aggregator redundancy information", e);
 		}
 	}
 

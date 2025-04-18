@@ -62,6 +62,18 @@ public class DeviceInfo {
 					firmware = new Firmware();
 				}
 				return firmware.getBuildName();
+			case REDUNDANCY_ROLE:
+				Redundancy redundancyRole = deviceInfoData.getRedundancy();
+				if(redundancyRole == null) {
+					redundancyRole = new Redundancy();
+				}
+				return redundancyRole.getRole();
+			case REDUNDANCY_STATE:
+				Redundancy redundancyState = deviceInfoData.getRedundancy();
+				if(redundancyState == null) {
+					redundancyState = new Redundancy();
+				}
+				return redundancyState.getState();
 			case STATUS:
 				Status status = deviceInfoData.getStatus();
 				if (status == null) {

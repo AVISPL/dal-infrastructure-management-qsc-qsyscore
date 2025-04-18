@@ -50,6 +50,7 @@ public class QSYSCoreConstant {
 	public static final String LAN_B = "LAN_B";
 	public static final String CHANNEL = "Channel";
 	public static final String HOSTNAME = "Hostname";
+	public static final String REDUNDANCY = "Redundancy";
 	public static final String SPECIAL_CHARS_PATTERN = ".*[~!@#$%^&\\\\'].*|.*<(\\?).*|.*(\\<)(\\/).*";
 
 	// Device response Type
