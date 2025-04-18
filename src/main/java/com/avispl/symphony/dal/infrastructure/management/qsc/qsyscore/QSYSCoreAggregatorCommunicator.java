@@ -847,7 +847,12 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			RpcMethod method = RpcMethod.GET_COMPONENTS;
 			String request = String.format(RpcMethod.getRequest(), method.getName(), RpcMethod.getParamsString(method));
 			List<String> response = Arrays.asList(qrcCommunicator.send(request));
-			if (response.size() > 1) {
+
+			Optional<String> validResponse = response.stream()
+					.filter(res -> res.contains(QSYSCoreConstant.CMD_RESULT) && !res.contains(QSYSCoreConstant.CMD_METHOD))
+					.findFirst();
+
+			if (validResponse.isPresent() ) {
 				ComponentWrapper componentWrapper = objectMapper.readValue(response.get(1), ComponentWrapper.class);
 				if (componentWrapper.getResult() != null) {
 
@@ -879,6 +884,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						}
 					}
 				}
+			} else {
+				response.stream()
+						.filter(res -> res.contains(QSYSCoreConstant.CMD_ERROR))
+						.findFirst()
+						.ifPresent(err -> logger.warn("Have error response: " + err));
 			}
 		} catch (Exception e) {
 			logger.error("Error when populate component" + e.getMessage(), e);
@@ -1266,11 +1276,20 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				String request = String.format(RpcMethod.getRequest(), RpcMethod.GET_CONTROLS.getName(), RpcMethod.getParamsString(RpcMethod.GET_CONTROLS));
 				request = String.format(request, deviceId);
 				List<String> response = Arrays.asList(qrcCommunicator.send(request));
-				if (response.size() > 1) {
+				Optional<String> validResponse = response.stream()
+						.filter(res -> res.contains(QSYSCoreConstant.CMD_RESULT) && !res.contains(QSYSCoreConstant.CMD_METHOD))
+						.findFirst();
+
+				if (validResponse.isPresent()) {
 					JsonNode deviceControlResponse = objectMapper.readValue(response.get(1), JsonNode.class);
 					deviceMap.get(deviceId).monitoringDevice(deviceControlResponse);
 					mapOfIdAndAggregatedDeviceList.put(deviceId, deviceMap.get(deviceId));
 					errorDeviceMap.remove(deviceId);
+				} else {
+					response.stream()
+							.filter(res -> res.contains(QSYSCoreConstant.CMD_ERROR))
+							.findFirst()
+							.ifPresent(err -> logger.warn("Error retrieving controls for device " + deviceId + ": " + err));
 				}
 			} catch (Exception e) {
 				logger.error("Can not retrieve information of aggregated device have id is " + deviceId, e);

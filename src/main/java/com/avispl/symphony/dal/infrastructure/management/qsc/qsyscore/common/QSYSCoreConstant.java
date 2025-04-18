@@ -51,6 +51,9 @@ public class QSYSCoreConstant {
 	public static final String CHANNEL = "Channel";
 	public static final String HOSTNAME = "Hostname";
 	public static final String REDUNDANCY = "Redundancy";
+	public static final String CMD_RESULT = "\"result\"";
+	public static final String CMD_METHOD = "\"method\"";
+	public static final String CMD_ERROR = "\"error\"";
 	public static final String SPECIAL_CHARS_PATTERN = ".*[~!@#$%^&\\\\'].*|.*<(\\?).*|.*(\\<)(\\/).*";
 
 	// Device response Type
