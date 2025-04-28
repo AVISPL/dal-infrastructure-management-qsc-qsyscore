@@ -9,6 +9,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.EnumTypeHandler;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.ReceiverDeviceMetric;
@@ -39,16 +40,17 @@ public class ReceiverDevice extends QSYSPeripheralDevice {
 	 */
 	@Override
 	public void monitoringDevice(JsonNode deviceControl) {
-		this.getStats().clear();
-		this.getAdvancedControllableProperties().clear();
-		List<ReceiverDeviceMetric> metrics = Arrays.asList(
-				ReceiverDeviceMetric.CHANNEL_GAIN,
-				ReceiverDeviceMetric.CHANNEL_PEAK_INPUT_LEVEL
-		);
-		if (!deviceControl.hasNonNull(QSYSCoreConstant.RESULT) ||
-				!deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
-			return;
-		}
+		try{
+			this.getStats().clear();
+			this.getAdvancedControllableProperties().clear();
+			List<ReceiverDeviceMetric> metrics = Arrays.asList(
+					ReceiverDeviceMetric.CHANNEL_GAIN,
+					ReceiverDeviceMetric.CHANNEL_PEAK_INPUT_LEVEL
+			);
+			if (!deviceControl.hasNonNull(QSYSCoreConstant.RESULT) ||
+					!deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
+				return;
+			}
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
 				ReceiverDeviceMetric metric = EnumTypeHandler.getMetricByPropertyName(ReceiverDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
 				if (metric == null) {
@@ -85,5 +87,8 @@ public class ReceiverDevice extends QSYSPeripheralDevice {
 				}
 			}
 			super.updateStatusMessage();
+		} catch (Exception e) {
+			throw new ResourceNotReachableException("Error occurred while monitoring device control: " + e.getMessage(), e);
+		}
 	}
 }

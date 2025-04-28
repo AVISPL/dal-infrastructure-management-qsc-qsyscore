@@ -47,7 +47,7 @@ public enum AmplifierDeviceMetric implements DeviceMetric {
 	CHANNEL_HEAD_ROOM("Channel%s#Headroom(dB)", "channel.%s.headroom"),
 	CHANNEL_CURRENT("Channel%s#Current(A)", "channel.%s.current"),
 	CHANNEL_VOLTAGE("Channel%s#Voltage(V)", "channel.%s.voltage"),
-	CHANNEL_POWER("Power(W)", "channel.x.power");
+	CHANNEL_POWER("Channel%s#Power(W)", "channel.%s.power");
 
 	private final String metric;
 	private final String property;

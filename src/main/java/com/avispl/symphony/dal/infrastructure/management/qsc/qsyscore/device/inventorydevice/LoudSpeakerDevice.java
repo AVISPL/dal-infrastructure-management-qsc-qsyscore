@@ -7,10 +7,12 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.in
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableMap;
 
+import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.EnumTypeHandler;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.LoudSpeakerDeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
@@ -71,12 +73,13 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 	 */
 	@Override
 	public void monitoringDevice(JsonNode deviceControl) {
-		this.getStats().clear();
-		this.getAdvancedControllableProperties().clear();
-		if (!deviceControl.hasNonNull(QSYSCoreConstant.RESULT) ||
-				!deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
-			return;
-		}
+		try {
+			this.getStats().clear();
+			this.getAdvancedControllableProperties().clear();
+			if (!deviceControl.hasNonNull(QSYSCoreConstant.RESULT) ||
+					!deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
+				return;
+			}
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
 				LoudSpeakerDeviceMetric metric = EnumTypeHandler.getMetricByName(LoudSpeakerDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
 				if (metric == null) {
@@ -91,8 +94,16 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 				switch (metric){
 					case MUTE:
 					case FULL_RANGE_MUTE:
+						int statusMute = value.equalsIgnoreCase("unmuted") ? 0 : 1;
+						addAdvancedControlProperties(
+								this.getAdvancedControllableProperties(),
+								getStats(),
+								createSwitch(metric.getMetric(), statusMute, "Off", "On"),
+								String.valueOf(statusMute)
+						);
+						break;
 					case FULL_RANGE_INVERT:
-						int status = value.equalsIgnoreCase("normal") || value.equalsIgnoreCase("false") ? 0 : 1;
+						int status = value.equalsIgnoreCase("normal") ? 0 : 1;
 						addAdvancedControlProperties(
 								this.getAdvancedControllableProperties(),
 								getStats(),
@@ -103,7 +114,7 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 					case GAIN:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metric.getMetric(), "-100", "20", -100f, 20f, Float.parseFloat(value)), value);
-						this.getStats().put("GainCurrentValue(dB)", uppercaseFirstCharacter(value));
+						this.getStats().put("GainCurrentValue(dB)", value);
 						break;
 					case FULL_RANGE_LIMITER:
 						this.getStats().put(
@@ -114,8 +125,8 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 						);						break;
 					case DELAY:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
-								metric.getMetric(), "0", "2", 0f, 2f, Float.parseFloat(value)), value);
-						this.getStats().put("DelayCurrentValue(ms)", uppercaseFirstCharacter(value));
+								metric.getMetric(), "0", "2000", 0f, 2000f, Float.parseFloat(value)), value);
+						this.getStats().put("DelayCurrentValue(ms)", value);
 						break;
 					case FULL_RANGE_CURRENT:
 					case FULL_RANGE_POWER:
@@ -132,17 +143,19 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 					case FULL_RANGE_HIGH_PASS_FREQ:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metric.getMetric(), "30", "300", 30f, 300f, Float.parseFloat(value)), value);
-						this.getStats().put("Fullrange#HighPassFreqCurrentValue(Hz)", uppercaseFirstCharacter(value));
+						this.getStats().put("Fullrange#HighPassFreqCurrentValue(Hz)", value);
 						break;
 					case FULL_RANGE_OPEN_THRESHOLD:
+						value = value.replaceAll(Pattern.quote("Ω") + "\\s*$", "");
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								getFormattedMetricName(metric, control), "0", "1501", 0f, 1501f, Float.parseFloat(value)), value);
-						this.getStats().put("Fullrange#OpenThresholdCurrentValue(Ω)", uppercaseFirstCharacter(value));
+						this.getStats().put("Fullrange#OpenThresholdCurrentValue(Ω)", value);
 						break;
 					case FULL_RANGE_SHORT_THRESHOLD:
+						value = value.replaceAll(Pattern.quote("Ω") + "\\s*$", "");
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								getFormattedMetricName(metric, control), "0", "1501", 0f, 1501f, Float.parseFloat(value)), value);
-						this.getStats().put("Fullrange#ShortThresholdCurrentValue(Ω)", uppercaseFirstCharacter(value));
+						this.getStats().put("Fullrange#ShortThresholdCurrentValue(Ω)", value);
 						break;
 					case FULL_RANGE_OPEN:
 					case FULL_RANGE_SHORT:
@@ -156,8 +169,10 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 						this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? uppercaseFirstCharacter(value) : QSYSCoreConstant.DEFAUL_DATA);
 						break;
 				}
-
 			}
 			super.updateStatusMessage();
+		} catch (Exception e){
+			throw new ResourceNotReachableException("Error occurred while monitoring device control: " + e.getMessage(), e);
+		}
 	}
 }

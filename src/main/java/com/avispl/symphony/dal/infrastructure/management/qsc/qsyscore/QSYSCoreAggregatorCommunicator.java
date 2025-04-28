@@ -362,7 +362,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	public List<Statistics> getMultipleStatistics() throws Exception {
 		ExtendedStatistics extendedStatistics = new ExtendedStatistics();
 
-		// This is to make sure if the statistics is being fetched before/after any set of control operations
+		// This is to make sure if populateMonitoringAndControllableProperties the statistics is being fetched before/after any set of control operations
 		reentrantLock.lock();
 		try {
 			if (!isEmergencyDelivery) {
@@ -853,7 +853,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					.findFirst();
 
 			if (validResponse.isPresent() ) {
-				ComponentWrapper componentWrapper = objectMapper.readValue(response.get(1), ComponentWrapper.class);
+				ComponentWrapper componentWrapper = objectMapper.readValue(response.get(0), ComponentWrapper.class);
 				if (componentWrapper.getResult() != null) {
 
 					//Because some device could be removed, so we need save all existed device
@@ -1281,7 +1281,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						.findFirst();
 
 				if (validResponse.isPresent()) {
-					JsonNode deviceControlResponse = objectMapper.readValue(response.get(1), JsonNode.class);
+					JsonNode deviceControlResponse = objectMapper.readValue(validResponse.get(), JsonNode.class);
 					deviceMap.get(deviceId).monitoringDevice(deviceControlResponse);
 					mapOfIdAndAggregatedDeviceList.put(deviceId, deviceMap.get(deviceId));
 					errorDeviceMap.remove(deviceId);

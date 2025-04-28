@@ -17,6 +17,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.avispl.symphony.api.dal.dto.control.ConnectionState;
 import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.dal.BaseDevice;
@@ -46,6 +49,12 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 	private int socketTimeout = 30000;
 	private Socket socket;
 	private int port = 1710;
+	/**
+	 * A mapper for reading and writing JSON using Jackson library.
+	 * ObjectMapper provides functionality for converting between Java objects and JSON.
+	 * It can be used to serialize objects to JSON format, and deserialize JSON data to objects.
+	 */
+	private ObjectMapper objectMapper = new ObjectMapper();
 
 	/**
 	 * This method returns the device UPD port
@@ -294,7 +303,6 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 
 		String[] response;
 		try {
-			this.numOfResponses = this.status.getConnectionState() == ConnectionState.Connected ? 1 : 2;
 			response = this.send(data, true);
 		} finally {
 			writeLock.unlock();
@@ -420,9 +428,7 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 		if (this.logger.isDebugEnabled()) {
 			this.logger.debug("DEBUG - Socket Communicator reading after command text \"".concat(command).concat("\" was sent to host ").concat(this.host));
 		}
-
 		// Count number of responses
-		int countResponses = 0;
 		long startTime = System.currentTimeMillis();
 		long timeout = 30 * 1000; // 30s read timeout
 		InputStreamReader inputStreamReader = new InputStreamReader(in);
@@ -439,8 +445,8 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 				stringBuilder.append((char) x);
 				// Char '\00' has int value is 0
 				// It is the symbol represents for the end of one response
-				if (x == 0) {
-					countResponses++;
+				if (x == 0 && verifyCommandGetControl(extractResponse(stringBuilder.toString()))) {
+					break;
 				}
 				// It's necessary to add read timeout to break the loop in case response data do not contain end character
 				if (System.currentTimeMillis() - startTime > timeout) {
@@ -453,10 +459,30 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 				logger.error("Failed to read read response data of command " + command + " with error " + e.getMessage());
 				throw new IOException("Failed to read response data of command " + command);
 			}
-		} while (countResponses != this.numOfResponses);
+		} while (true);
 
 		String response = stringBuilder.toString();
 		return extractResponse(response);
+	}
+
+	/**
+	 * Verifies whether the last element of the given data array contains a valid JSON
+	 * with a "result" field.
+	 *
+	 * @param data an array of {@link String}, where the last element is expected to be a JSON string
+	 * @return {@code true} if the parsed JSON contains the "result" field; {@code false} otherwise
+	 */
+	private boolean verifyCommandGetControl(String[] data) {
+		try{
+			String arr = data[data.length - 1];
+			JsonNode parseArr = objectMapper.readTree(arr);
+			if(parseArr.has("result")){
+				return true;
+			}
+		} catch (Exception e) {
+			return false;
+		}
+		return false;
 	}
 
 	/**

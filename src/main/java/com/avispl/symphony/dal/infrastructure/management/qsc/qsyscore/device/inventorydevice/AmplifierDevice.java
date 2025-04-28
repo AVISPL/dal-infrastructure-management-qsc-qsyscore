@@ -13,6 +13,7 @@ import java.util.Map.Entry;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableMap;
 
+import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.AmplifierDeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.EnumTypeHandler;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
@@ -88,28 +89,30 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 	 */
 	@Override
 	public void monitoringDevice(JsonNode deviceControl) {
-		int muteAll = 0;
-		int meterValue = 0;
-		this.getStats().clear();
-		this.getAdvancedControllableProperties().clear();
+		try {
+			int muteAll = 0;
+			int meterValue = 0;
+			this.getStats().clear();
+			this.getAdvancedControllableProperties().clear();
 
-		if (!deviceControl.hasNonNull(QSYSCoreConstant.RESULT) ||
-				!deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
-			return;
-		}
+			if (!deviceControl.hasNonNull(QSYSCoreConstant.RESULT) ||
+					!deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
+				return;
+			}
 
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
 				AmplifierDeviceMetric metric = EnumTypeHandler.getMetricByPropertyName(AmplifierDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
 				if (metric == null) {
 					continue;
 				}
+
 				String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
 				if (METRIC_LIST.contains(metric)) {
 					for (Entry<String, String> entry : UNIT_REPLACEMENTS.entrySet()) {
 						value = value.replace(entry.getKey(), entry.getValue());
 					}
 				}
-				String metricName = getFormattedMetricName(metric, control);
+				String metricName = getFormattedMetricNameAmplifier(metric, control);
 				switch (metric){
 					case ON_STANDBY:
 					case GAIN_LOCK:
@@ -178,17 +181,17 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 					case CHANNEL_GAIN:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metricName, "-100", "20", -100f, 20f, Float.parseFloat(value)), value);
-						this.getStats().put(getFormattedMetricNameSlider(metricName), uppercaseFirstCharacter(value));
+						this.getStats().put(getFormattedMetricNameSlider(metricName), value);
 						break;
 					case POWER_SAVE_THRESHOLD:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metricName, "-99", "-50", -99.0f, -50.0f, Float.parseFloat(value)), value);
-						this.getStats().put(getFormattedMetricNameSlider(metricName), uppercaseFirstCharacter(value));
+						this.getStats().put(getFormattedMetricNameSlider(metricName), value);
 						break;
 					case POWER_SAVE_TIMEOUT:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metricName, "1", "99", 1.0f, 99.0f, Float.parseFloat(value)), value);
-						this.getStats().put("PowerManagement#PowerSaveTimeoutCurrentValue", uppercaseFirstCharacter(value));
+						this.getStats().put("PowerManagement#PowerSaveTimeoutCurrentValue", value);
 						break;
 					case CHANNEL_DAC_LIMIT:
 					case CHANNEL_LIMIT:
@@ -204,5 +207,44 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 				}
 			}
 			super.updateStatusMessage();
+		}catch (Exception e){
+			throw new ResourceNotReachableException("Error occurred while monitoring device control: " + e.getMessage(), e);
+		}
 	}
+
+	/**
+	 * Formats the metric name based on the given control data for Amplifier.
+	 *
+	 * @param metric containing the metric and property information.
+	 * @param control containing the control name used for formatting.
+	 * @return the formatted metric name.
+	 */
+	public String getFormattedMetricNameAmplifier(AmplifierDeviceMetric metric, JsonNode control) {
+		String[] splitProperty = metric.getProperty().split(QSYSCoreConstant.FORMAT_STRING);
+
+		if (splitProperty.length > 1) {
+			String controlName = control.get(QSYSCoreConstant.CONTROL_NAME).asText();
+
+			controlName = String.format(metric.getMetric(),
+					controlName.replace(splitProperty[0], QSYSCoreConstant.EMPTY)
+							.replace(splitProperty[1], QSYSCoreConstant.EMPTY));
+			return convertChannelNumbersToLetters(controlName);
+		}
+
+		return metric.getMetric();
+	}
+
+	/**
+	 * Formats the metric name based on the given control data for Amplifier.
+	 * Replace Channel group from 1,2,3,4 to A,B,C,D
+	 *
+	 * @param input containing the name of metric.
+	 */
+	private String convertChannelNumbersToLetters(String input) {
+		return input.replaceAll("Channel1", "ChannelA")
+				.replaceAll("Channel2", "ChannelB")
+				.replaceAll("Channel3", "ChannelC")
+				.replaceAll("Channel4", "ChannelD");
+	}
+
 }
