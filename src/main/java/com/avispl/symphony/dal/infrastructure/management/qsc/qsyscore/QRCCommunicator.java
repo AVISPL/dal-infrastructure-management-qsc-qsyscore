@@ -49,11 +49,7 @@ public class QRCCommunicator extends BaseDevice implements Communicator {
 	private int socketTimeout = 30000;
 	private Socket socket;
 	private int port = 1710;
-	/**
-	 * A mapper for reading and writing JSON using Jackson library.
-	 * ObjectMapper provides functionality for converting between Java objects and JSON.
-	 * It can be used to serialize objects to JSON format, and deserialize JSON data to objects.
-	 */
+
 	private ObjectMapper objectMapper = new ObjectMapper();
 
 	/**

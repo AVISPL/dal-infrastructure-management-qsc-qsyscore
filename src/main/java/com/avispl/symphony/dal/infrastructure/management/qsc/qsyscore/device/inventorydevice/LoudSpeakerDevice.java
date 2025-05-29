@@ -20,7 +20,7 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSY
 import com.avispl.symphony.dal.util.StringUtils;
 
 /**
- * LoudSpeakerDevice
+ * LoudSpeakerDevice class to implement monitoring and controlling for LoudSpeaker device
  *
  * @author Harry / Symphony Dev Team<br>
  * @since 1.0.0

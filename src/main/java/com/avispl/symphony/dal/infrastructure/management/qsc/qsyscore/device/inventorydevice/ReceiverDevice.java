@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ * Copyright (c) 2025 AVI-SPL, Inc. All Rights Reserved.
  */
 
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice;
@@ -17,7 +17,7 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSY
 import com.avispl.symphony.dal.util.StringUtils;
 
 /**
- * ReceiverDevice
+ * ReceiverDevice class to implement monitoring and controlling for Receiver device
  *
  * @author Harry / Symphony Dev Team<br>
  * @since 1.0.0
@@ -49,7 +49,7 @@ public class ReceiverDevice extends QSYSPeripheralDevice {
 			);
 			if (!deviceControl.hasNonNull(QSYSCoreConstant.RESULT) ||
 					!deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
-				return;
+				throw new IllegalArgumentException("Error: Missing or invalid 'RESULT' or 'CONTROLS' field in the device control response for this device");
 			}
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
 				ReceiverDeviceMetric metric = EnumTypeHandler.getMetricByPropertyName(ReceiverDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());

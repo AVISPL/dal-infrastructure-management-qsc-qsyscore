@@ -742,9 +742,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	}
 
 	/**
-	 * Get information of redundancy group
+	 * Retrieves the redundancy group information
+	 * The method fetches data from a remote service, and populates the `stats` map with redundancy metrics.
 	 *
-	 * @param stats Map store all information
+	 * @param stats Map store all the relevant redundancy information
 	 */
 	private void retrieveQSYSAggregatorRedundancy(Map<String, String> stats) {
 		try{
@@ -1109,6 +1110,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 	/**
 	 * Handles the control of an aggregated device by sending a request to set a specific control metric.
+	 * The communication with the device is carried out using the RPC protocol, where:
+	 * - The request is sent using the `SET_CONTROLS` RPC method.
+	 * - The parameters for the request are formatted as: `property`, `metricName`, and `value` (the value is wrapped in quotes if not "1" or "0").
 	 *
 	 * @param metricName The name of the metric to be controlled.
 	 * @param property   The property associated with the metric.

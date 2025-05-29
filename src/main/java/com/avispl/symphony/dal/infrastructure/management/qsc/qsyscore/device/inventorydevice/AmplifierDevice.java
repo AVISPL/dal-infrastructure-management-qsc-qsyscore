@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ * Copyright (c) 2025 AVI-SPL, Inc. All Rights Reserved.
  */
 
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice;
@@ -21,7 +21,7 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSY
 import com.avispl.symphony.dal.util.StringUtils;
 
 /**
- * AmplifierDevice
+ * AmplifierDevice class to implement monitoring and controlling for Amplifier device
  *
  * @author Harry / Symphony Dev Team<br>
  * @since 1.0.0
