@@ -19,7 +19,9 @@ public enum QSYSCoreSystemMetric {
 	DEVICE_MODEL("DeviceModel"),
 	FIRMWARE_VERSION("FirmwareVersion"),
 	UPTIME("Uptime"),
-	STATUS("Status");
+	STATUS("Status"),
+	REDUNDANCY_ROLE("RedundancyRole"),
+	REDUNDANCY_STATE("RedundancyState");
 
 	private final String name;
 

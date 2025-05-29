@@ -52,6 +52,14 @@ public class DesignInfo {
 				return result.getPlatform();
 			case DESIGN_CODE:
 				return result.getDesignCode();
+			case IS_REDUNDANCY:
+				String redundancy;
+				if("true".equals(result.getIsRedundant())){
+					redundancy = "Enabled";
+				} else {
+					redundancy = "Disabled";
+				}
+				return redundancy;
 			default:
 				throw new IllegalArgumentException("The property name doesn't support" + qsysCoreDesignMetric.getName());
 		}

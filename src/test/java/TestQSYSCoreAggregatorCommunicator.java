@@ -40,11 +40,11 @@ public class TestQSYSCoreAggregatorCommunicator {
 
 	@BeforeEach()
 	public void setUp() throws Exception {
-		qSYSCoreCommunicator.setHost("127.0.0.1");
+		qSYSCoreCommunicator.setHost("");
 		qSYSCoreCommunicator.setLogin("");
 		qSYSCoreCommunicator.setPassword("");
-		qSYSCoreCommunicator.setPort(80);
-		qSYSCoreCommunicator.setProtocol("http");
+		qSYSCoreCommunicator.setPort(443);
+		qSYSCoreCommunicator.setProtocol("https");
 		qSYSCoreCommunicator.init();
 		qSYSCoreCommunicator.connect();
 	}
@@ -64,6 +64,7 @@ public class TestQSYSCoreAggregatorCommunicator {
 	void testGetMultipleStatisticsWithSystemInfo() throws Exception {
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
+		Assertions.assertEquals("70/100V_Speaker_Speaker-1", stats.get(QSYSCoreSystemMetric.DEVICE_ID.getName()));
 		Assertions.assertEquals("3-440F59FA6034C59670FF3C0928929607", stats.get(QSYSCoreSystemMetric.DEVICE_ID.getName()));
 		Assertions.assertEquals("3-440F59FA6034C59670FF3C0928929607", stats.get(QSYSCoreSystemMetric.SERIAL_NUMBER.getName()));
 		Assertions.assertEquals("Core 110f", stats.get(QSYSCoreSystemMetric.DEVICE_MODEL.getName()));
@@ -382,7 +383,38 @@ public class TestQSYSCoreAggregatorCommunicator {
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
 		Thread.sleep(30000);
 		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
-		Assert.assertEquals(16, aggregatedDeviceList.size());
+		System.out.println(aggregatedDeviceList);
+		Assert.assertEquals(25, aggregatedDeviceList.size());
+	}
+
+	@Test
+	void testGetControllableProp() throws Exception {
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(20000);
+		ControllableProperty controllableProperty = new ControllableProperty();
+
+		String property = "Channel1#Mute";
+		String deviceId = "AES67_Transmitter_AES67-TX-1";
+		String value = "1";
+		controllableProperty.setProperty(property);
+		controllableProperty.setValue(value);
+		controllableProperty.getProperty();
+		controllableProperty.setDeviceId(deviceId);
+
+		qSYSCoreCommunicator.controlProperty(controllableProperty);
+	}
+
+	@Test
+	void TestAggregatedDeviceHasNameIsTransmitter() throws Exception {
+		qSYSCoreCommunicator.setFilterDeviceByName("AES67_Transmitter_AES67-TX-1");
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(30000);
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Thread.sleep(30000);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Assert.assertEquals(1, aggregatedDeviceList.size());
 	}
 
 	/**

@@ -22,6 +22,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.util.CollectionUtils;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -50,7 +51,9 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.Device
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.LoginInfo;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreDesignMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreNetworkMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreRedundancyMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreSystemMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.RedundancyWrapper;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.rpc.RpcMethod;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.statistics.DynamicStatisticsDefinitions;
 import com.avispl.symphony.dal.util.ControllablePropertyFactory;
@@ -209,7 +212,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * List of aggregated device
 	 */
-	private List<AggregatedDevice> aggregatedDeviceList = Collections.synchronizedList(new ArrayList<>());
+	private List<AggregatedDevice> resultAggregatedDeviceList = Collections.synchronizedList(new ArrayList<>());
 
 	/**
 	 * The variable checks if qrcCommunicator is initial at the first time
@@ -359,10 +362,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	public List<Statistics> getMultipleStatistics() throws Exception {
 		ExtendedStatistics extendedStatistics = new ExtendedStatistics();
 
-		// This is to make sure if the statistics is being fetched before/after any set of control operations
+		// This is to make sure if populateMonitoringAndControllableProperties the statistics is being fetched before/after any set of control operations
 		reentrantLock.lock();
 		try {
 			if (!isEmergencyDelivery) {
+				deviceMap.clear();
 				Map<String, String> stats = new HashMap<>();
 				List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
 
@@ -420,7 +424,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						}
 					}
 				}
-
+				stats.put("NumberOfDevices", String.valueOf(currentSizeDeviceMap));
 				populateAggregatedMonitoringData(currentSizeDeviceMap);
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setControllableProperties(controllableProperties);
@@ -459,17 +463,42 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			}
 			String property = controllableProperty.getProperty();
 			String value = String.valueOf(controllableProperty.getValue());
+			String deviceId = controllableProperty.getDeviceId();
 			if (this.logger.isDebugEnabled()) {
 				this.logger.debug("controlProperty property " + property);
 				this.logger.debug("controlProperty value " + value);
 			}
+
 
 			String[] splitProperty = property.split(QSYSCoreConstant.HASH);
 
 			// Ex: Gain:Named Component#Gain Value Control
 			// metricName = Gain Value Control
 			// namedComponent = Named Component
-			String metricName = splitProperty[1];
+			String metricName = property;
+			if (property.contains(QSYSCoreConstant.HASH)) {
+				metricName = splitProperty[1];
+			}
+			Optional<AggregatedDevice> aggregatedDevice = resultAggregatedDeviceList.stream().filter(item -> item.getDeviceId().equals(deviceId)).findFirst();
+
+			if (aggregatedDevice.isPresent()) {
+				Map<String, String> properties = aggregatedDevice.get().getProperties();
+				String qsysType = properties.get(QSYSCoreConstant.QSYS_TYPE);
+				String deviceType = convertTypeToDevice(qsysType);
+
+				Map<String, String> stats = localExtStats.getStatistics();
+				List<AdvancedControllableProperty> advancedControllableProperties = localExtStats.getControllableProperties();
+				String metricProperty = getMetricProperty(metricName, deviceType);
+
+				if (StringUtils.isNotNullOrEmpty(metricProperty)) {
+					if (splitProperty[0].contains(QSYSCoreConstant.CHANNEL)) {
+						String indexChannel = splitProperty[0].replace(QSYSCoreConstant.CHANNEL, "");
+						metricProperty = metricProperty.replace(QSYSCoreConstant.FORMAT_STRING, indexChannel);
+					}
+					handleControlAggregated(metricProperty, deviceId, value);
+					updateValueForTheControllableProperty(property, value, stats, advancedControllableProperties);
+				}
+			}
 			List<String> splitComponent = Arrays.asList(splitProperty[0].split(QSYSCoreConstant.COLON, 2));
 			switch (splitComponent.get(0)) {
 				case QSYSCoreConstant.GAIN:
@@ -510,10 +539,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	@Override
 	public List<AggregatedDevice> retrieveMultipleStatistics() throws Exception {
-		List<AggregatedDevice> resultAggregatedDeviceList = new ArrayList<>();
 		if (mapOfIdAndAggregatedDeviceList.isEmpty()) {
 			return Collections.emptyList();
 		}
+		resultAggregatedDeviceList.clear();
 		synchronized (mapOfIdAndAggregatedDeviceList) {
 			for (Entry<String, QSYSPeripheralDevice> device : mapOfIdAndAggregatedDeviceList.entrySet()) {
 				if ((StringUtils.isNullOrEmpty(filterDeviceByQSYSType) || filterDeviceByQSYSTypeSet.contains(device.getValue().getType())) && (StringUtils.isNullOrEmpty(filterDeviceByName)
@@ -521,8 +550,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					AggregatedDevice aggregatedDevice = new AggregatedDevice();
 					aggregatedDevice.setDeviceId(device.getKey());
 					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
+					if(deviceStatus != null){
 					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.LIST_ONLINE_STATUS.stream()
 							.anyMatch(status -> status.equalsIgnoreCase(deviceStatus.trim())));
+					}
 					aggregatedDevice.setProperties(device.getValue().getStats());
 					String name = device.getKey();
 					if (QSYSCoreConstant.EXTERNAL.equals(device.getValue().getType())) {
@@ -617,7 +648,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 		mapOfIdAndAggregatedDeviceList.clear();
 		deviceIdDequeue = new ArrayDeque<>();
-		aggregatedDeviceList.clear();
+		resultAggregatedDeviceList.clear();
 		deviceMap.clear();
 		loginInfo = null;
 		localPollingInterval = 0;
@@ -678,6 +709,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private void populateQSYSAggregatorMonitoringData(Map<String, String> stats) throws Exception {
 		retrieveQSYSAggregatorInfo(stats);
 		retrieveQSYSAggregatorNetworkInfo(stats);
+		retrieveQSYSAggregatorRedundancy(stats);
 		retrieveQSYSAggregatorDesign(stats);
 	}
 
@@ -706,6 +738,36 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				stats.put(propertiesName.getName(), QSYSCoreConstant.DEFAUL_DATA);
 			}
 			logger.error("Error when retrieve aggregator information", e);
+		}
+	}
+
+	/**
+	 * Retrieves the redundancy group information
+	 * The method fetches data from a remote service, and populates the `stats` map with redundancy metrics.
+	 *
+	 * @param stats Map store all the relevant redundancy information
+	 */
+	private void retrieveQSYSAggregatorRedundancy(Map<String, String> stats) {
+		try{
+			String response = doGet(buildDeviceFullPath(QSYSCoreURL.BASE_URI + QSYSCoreURL.LIST_ITEM_ACTIVE));
+			JsonNode root = objectMapper.readTree(response);
+			JsonNode dataNode = root.get("data");
+			List<RedundancyWrapper> redundancyList = objectMapper.readValue(
+					dataNode.toString(),
+					new TypeReference<List<RedundancyWrapper>>() {}
+			);
+			Optional<RedundancyWrapper> optional = redundancyList.stream().findFirst();
+			if (optional.isPresent()) {
+				RedundancyWrapper processorRedundancy = optional.get();
+				for (QSYSCoreRedundancyMetric metric : QSYSCoreRedundancyMetric.values()) {
+					stats.put(
+							QSYSCoreConstant.REDUNDANCY + QSYSCoreConstant.HASH + metric.getName(),
+							getDataOrDefaultDataIfNull(processorRedundancy.getValueByMetricName(metric))
+					);
+				}
+			}
+		}catch (Exception e) {
+			logger.error("Error when retrieve aggregator redundancy information", e);
 		}
 	}
 
@@ -786,8 +848,13 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			RpcMethod method = RpcMethod.GET_COMPONENTS;
 			String request = String.format(RpcMethod.getRequest(), method.getName(), RpcMethod.getParamsString(method));
 			List<String> response = Arrays.asList(qrcCommunicator.send(request));
-			if (response.size() > 1) {
-				ComponentWrapper componentWrapper = objectMapper.readValue(response.get(1), ComponentWrapper.class);
+
+			Optional<String> validResponse = response.stream()
+					.filter(res -> res.contains(QSYSCoreConstant.CMD_RESULT) && !res.contains(QSYSCoreConstant.CMD_METHOD))
+					.findFirst();
+
+			if (validResponse.isPresent() ) {
+				ComponentWrapper componentWrapper = objectMapper.readValue(response.get(0), ComponentWrapper.class);
 				if (componentWrapper.getResult() != null) {
 
 					//Because some device could be removed, so we need save all existed device
@@ -818,6 +885,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						}
 					}
 				}
+			} else {
+				response.stream()
+						.filter(res -> res.contains(QSYSCoreConstant.CMD_ERROR))
+						.findFirst()
+						.ifPresent(err -> logger.warn("Have error response: " + err));
 			}
 		} catch (Exception e) {
 			logger.error("Error when populate component" + e.getMessage(), e);
@@ -907,6 +979,14 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				return new VideoSourceDevice();
 			case QSYSCoreConstant.MONITORING_PROXY:
 				return new MonitoringProxyDevice();
+			case QSYSCoreConstant.TRANSMITTER_DEVICE:
+				return new TransmitterDevice();
+			case QSYSCoreConstant.AMPLIFIER_DEVICE:
+				return new AmplifierDevice();
+			case QSYSCoreConstant.RECEIVER_DEVICE:
+			return new ReceiverDevice();
+			case QSYSCoreConstant.LOUDSPEAKER_DEVICE:
+				return new LoudSpeakerDevice();
 			default:
 				this.logger.error("Type " + type + " does not exist");
 				return null;
@@ -1029,6 +1109,94 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	}
 
 	/**
+	 * Handles the control of an aggregated device by sending a request to set a specific control metric.
+	 * The communication with the device is carried out using the RPC protocol, where:
+	 * - The request is sent using the `SET_CONTROLS` RPC method.
+	 * - The parameters for the request are formatted as: `property`, `metricName`, and `value` (the value is wrapped in quotes if not "1" or "0").
+	 *
+	 * @param metricName The name of the metric to be controlled.
+	 * @param property   The property associated with the metric.
+	 * @param value      The value to be set for the control. If the value is "1" or "0", it is sent as-is; otherwise, it is wrapped in double quotes.
+	 */
+	private void handleControlAggregated(String metricName, String property, String value) {
+		RpcMethod method = RpcMethod.SET_CONTROLS;
+		String request = String.format(RpcMethod.getRequest(), method.getName(), RpcMethod.getParamsString(method));
+		request = String.format(request, property, metricName,
+				("1".equals(value) || "0".equals(value)) ? value : "\"" + value + "\"");
+
+		try {
+			List<String> response = Arrays.asList(qrcCommunicator.send(request));
+			if (response.size() > 1) {
+				JsonNode responseControl = objectMapper.readValue(response.get(1), JsonNode.class);
+
+				if (!responseControl.has(QSYSCoreConstant.RESULT) || !responseControl.get(QSYSCoreConstant.RESULT).asText().equals(QSYSCoreConstant.TRUE)) {
+					throw new IllegalStateException("Error: cannot set value of component " + metricName);
+				}
+			}
+		} catch (Exception e) {
+			throw new ResourceNotReachableException("Error when control " + metricName + " component", e);
+		}
+	}
+
+	/**
+	 * Converts a device type to its corresponding device name.
+	 *
+	 * @param type The type of the device (e.g., "Transmitter", "Amplifier", "Receiver", "LoudSpeaker").
+	 * @return The corresponding device name based on the provided type.
+	 * @throws IllegalArgumentException If the provided type is unknown.
+	 */
+	private static String convertTypeToDevice(String type) {
+		switch (type) {
+			case QSYSCoreConstant.TRANSMITTER_TYPE:
+				return QSYSCoreConstant.TRANSMITTER_DEVICE;
+			case QSYSCoreConstant.AMPLIFIER_TYPE:
+				return QSYSCoreConstant.AMPLIFIER_DEVICE;
+			case QSYSCoreConstant.RECEIVER_TYPE:
+				return QSYSCoreConstant.RECEIVER_DEVICE;
+			case QSYSCoreConstant.LOUDSPEAKER_TYPE:
+				return QSYSCoreConstant.LOUDSPEAKER_DEVICE;
+			default:
+				throw new IllegalArgumentException("Unknown type: " + type);
+		}
+	}
+
+	/**
+	 * Retrieves the property associated with a given metric name for a specific device model.
+	 *
+	 * @param metricName  The name of the metric to look up.
+	 * @param deviceModel The model of the device to determine the appropriate metric class.
+	 * @return The corresponding property of the metric if found, otherwise null.
+	 */
+	private String getMetricProperty(String metricName, String deviceModel) {
+		Class<? extends DeviceMetric> metricClass = getDeviceMetricClass(deviceModel);
+		return (metricClass == null) ? null
+				: Arrays.stream(metricClass.getEnumConstants())
+						.filter(metric -> metric.getMetric().contains(metricName))
+						.map(DeviceMetric::getProperty)
+						.findFirst()
+						.orElse(null);
+	}
+
+	/**
+	 * Retrieves the corresponding DeviceMetric class based on the given device type.
+	 *
+	 * @param deviceType The type of the device.
+	 * @return The corresponding DeviceMetric class, or null if the device type is unknown.
+	 */
+	private Class<? extends DeviceMetric> getDeviceMetricClass(String deviceType) {
+		if (QSYSCoreConstant.TRANSMITTER_DEVICE.equals(deviceType)) {
+			return TransmitterDeviceMetric.class;
+		} else if (QSYSCoreConstant.RECEIVER_DEVICE.equals(deviceType)) {
+			return ReceiverDeviceMetric.class;
+		} else if (QSYSCoreConstant.LOUDSPEAKER_DEVICE.equals(deviceType)) {
+			return LoudSpeakerDeviceMetric.class;
+		} else if (QSYSCoreConstant.AMPLIFIER_DEVICE.equals(deviceType)) {
+			return AmplifierDeviceMetric.class;
+		}
+		return null;
+	}
+
+	/**
 	 * Convert String to Float or null if It can not convert
 	 * Handle null pointer exception when use this method
 	 *
@@ -1112,11 +1280,20 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				String request = String.format(RpcMethod.getRequest(), RpcMethod.GET_CONTROLS.getName(), RpcMethod.getParamsString(RpcMethod.GET_CONTROLS));
 				request = String.format(request, deviceId);
 				List<String> response = Arrays.asList(qrcCommunicator.send(request));
-				if (response.size() > 1) {
-					JsonNode deviceControlResponse = objectMapper.readValue(response.get(1), JsonNode.class);
+				Optional<String> validResponse = response.stream()
+						.filter(res -> res.contains(QSYSCoreConstant.CMD_RESULT) && !res.contains(QSYSCoreConstant.CMD_METHOD))
+						.findFirst();
+
+				if (validResponse.isPresent()) {
+					JsonNode deviceControlResponse = objectMapper.readValue(validResponse.get(), JsonNode.class);
 					deviceMap.get(deviceId).monitoringDevice(deviceControlResponse);
 					mapOfIdAndAggregatedDeviceList.put(deviceId, deviceMap.get(deviceId));
 					errorDeviceMap.remove(deviceId);
+				} else {
+					response.stream()
+							.filter(res -> res.contains(QSYSCoreConstant.CMD_ERROR))
+							.findFirst()
+							.ifPresent(err -> logger.warn("Error retrieving controls for device " + deviceId + ": " + err));
 				}
 			} catch (Exception e) {
 				logger.error("Can not retrieve information of aggregated device have id is " + deviceId, e);
@@ -1201,6 +1378,18 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				case QSYSCoreConstant.CONTROL_INTERFACE_TYPE:
 					filterDeviceByQSYSTypeSet.add(QSYSCoreConstant.CONTROL_INTERFACE_DEVICE);
 					break;
+				case QSYSCoreConstant.TRANSMITTER_TYPE:
+					filterDeviceByQSYSTypeSet.add(QSYSCoreConstant.TRANSMITTER_DEVICE);
+					break;
+				case QSYSCoreConstant.AMPLIFIER_TYPE:
+					filterDeviceByQSYSTypeSet.add(QSYSCoreConstant.AMPLIFIER_DEVICE);
+					break;
+				case QSYSCoreConstant.RECEIVER_TYPE:
+					filterDeviceByQSYSTypeSet.add(QSYSCoreConstant.RECEIVER_DEVICE);
+					break;
+				case QSYSCoreConstant.LOUDSPEAKER_TYPE:
+					filterDeviceByQSYSTypeSet.add(QSYSCoreConstant.LOUDSPEAKER_DEVICE);
+					break;
 				case QSYSCoreConstant.EXTERNAL:
 					filterDeviceByQSYSTypeSet.add(QSYSCoreConstant.MONITORING_PROXY);
 					break;
@@ -1236,6 +1425,14 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				return QSYSCoreConstant.DISPLAY_TYPE;
 			case QSYSCoreConstant.PROCESSOR_DEVICE:
 				return QSYSCoreConstant.PROCESSOR_TYPE;
+			case QSYSCoreConstant.TRANSMITTER_DEVICE:
+				return  QSYSCoreConstant.TRANSMITTER_TYPE;
+			case QSYSCoreConstant.AMPLIFIER_DEVICE:
+				return QSYSCoreConstant.AMPLIFIER_TYPE;
+			case QSYSCoreConstant.RECEIVER_DEVICE:
+				return QSYSCoreConstant.RECEIVER_TYPE;
+			case QSYSCoreConstant.LOUDSPEAKER_DEVICE:
+				return QSYSCoreConstant.LOUDSPEAKER_TYPE;
 			default:
 				return QSYSCoreConstant.DEFAUL_DATA;
 		}
