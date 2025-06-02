@@ -21,10 +21,9 @@ public class PluginDevice extends QSYSPeripheralDevice {
 	/**
 	 * Manage are control of device
 	 *
-	 * @param response String store all information of a control
 	 */
 	@Override
-	public void controlDevice(JsonNode response) {
+	public void controlDevice(QSYSPeripheralDevice device, String property, String value, String metricName) {
 
 	}
 

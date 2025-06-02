@@ -17,6 +17,7 @@ public enum TransmitterDeviceMetric implements DeviceMetric {
 	ENCODING("Connection#Encoding", "encoding"),
 	STREAM_NAME("Connection#StreamName", "stream.name"),
 	MULTI_CAST_ADDRESS("Connection#MulticastAddress", "address"),
+	PRIMARY_OK("Connection#PrimaryOk", "primary.ok"),
 
 	STATUS("Status", "status"),
 	STATUS_LED("StatusLed", "status.led"),

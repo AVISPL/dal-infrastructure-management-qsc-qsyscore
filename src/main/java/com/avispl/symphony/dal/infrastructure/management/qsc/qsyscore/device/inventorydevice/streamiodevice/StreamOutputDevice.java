@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.EnumTypeHandler;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.StreamOutputDeviceMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
 import com.avispl.symphony.dal.util.StringUtils;
 
 /**
@@ -19,13 +20,13 @@ import com.avispl.symphony.dal.util.StringUtils;
  * @since 1.0.0
  */
 public class StreamOutputDevice extends StreamIODevice {
+
 	/**
 	 * Manage are control of device
 	 *
-	 * @param response String store all information of a control
 	 */
 	@Override
-	public void controlDevice(JsonNode response) {
+	public void controlDevice(QSYSPeripheralDevice device, String property, String value, String metricName) {
 
 	}
 

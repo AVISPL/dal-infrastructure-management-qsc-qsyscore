@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ * Copyright (c) 2025 AVI-SPL, Inc. All Rights Reserved.
  */
 
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
@@ -8,7 +8,7 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
  * LoudSpeakerDeviceMetric save all metric fields and corresponding response fields of the LoudSpeaker device metric
  *
  * @author Harry / Symphony Dev Team<br>
- * @since 1.0.0
+ * @since 1.1.0
  */
 public enum LoudSpeakerDeviceMetric implements DeviceMetric {
 	STATUS("Status", "status"),
@@ -26,11 +26,21 @@ public enum LoudSpeakerDeviceMetric implements DeviceMetric {
 	FULL_RANGE_OPEN_THRESHOLD("Fullrange#OpenThreshold(Ω)", "band.0.open.circuit.threshold"),
 	FULL_RANGE_SHORT_THRESHOLD("Fullrange#ShortThreshold(Ω)", "band.0.short.circuit.threshold"),
 
+	FULL_RANGE_HIGH_PILOT_IMPEDANCE("Fullrange#HighPilotImpedance", "band.0.high.pilot.impedance"),
+	FULL_RANGE_HIGH_PILOT_TON("Fullrange#HighPilotTone", "band.0.high.pilot.tone.enable"),
+
+	FULL_RANGE_LOW_PILOT_IMPEDANCE("Fullrange#LowPilotImpedance", "band.0.low.pilot.impedance"),
+	FULL_RANGE_LOW_PILOT_TON("Fullrange#LowPilotTone", "band.0.low.pilot.tone.enable"),
+
+	FULL_RANGE_IMPEDANCE("Fullrange#Impedance", "band.0.impedance"),
+
 	FULL_RANGE_VOLTAGE("Fullrange#Voltage(V)", "band.0.voltage"),
 	FULL_RANGE_CURRENT("Fullrange#Current(A)", "band.0.current"),
 	FULL_RANGE_POWER("Fullrange#Power(W)", "band.0.power"),
 	FULL_RANGE_LIMITER("Fullrange#Limiter(dB)", "band.0.limiter.reduction"),
+
 	FULL_RANGE_HIGH_PASS_FREQ("Fullrange#HighPassFreq(Hz)", "band.0.line.voltage.hp.frequency"),
+	FULL_RANGE_USER_HIGH_PASS("Fullrange#UserHighPass", "band.0.user.highpass"),
 	;
 
 	private final String metric;

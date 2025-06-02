@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty.DropDown;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty.Slider;
+import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.DeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.util.StringUtils;
@@ -267,5 +268,39 @@ public abstract class QSYSPeripheralDevice implements DeviceBehavior {
 							.replace(splitProperty[1], QSYSCoreConstant.EMPTY));
 		}
 		return metric.getMetric();
+	}
+
+	/**
+	 * Converts a time value with a unit suffix (e.g., "ms", "s", "m") into milliseconds.
+	 *
+	 * <ul>
+	 *   <li>Milliseconds (e.g., "500ms")</li>
+	 *   <li>Seconds (e.g., "1.25s")</li>
+	 *   <li>Minutes (e.g., "0.5m")</li>
+	 * </ul>
+	 *
+	 * @param timeValue the time string to convert (e.g., "500ms", "2s", "1.5m")
+	 * @return the equivalent value in milliseconds as a string (e.g., "500", "2000")
+	 * @throws ResourceNotReachableException if the value cannot be parsed or converted
+	 */
+	public String convertTimeToMs(String timeValue) {
+		if (timeValue == null || timeValue.isEmpty()) {
+			return QSYSCoreConstant.ZERO;
+		}
+		try {
+			timeValue = timeValue.trim().toLowerCase();
+			if (timeValue.endsWith("ms")) {
+				return timeValue.replace("ms", "").trim();
+			} else if (timeValue.endsWith("s")) {
+				float seconds = Float.parseFloat(timeValue.replace("s", "").trim());
+				return String.valueOf(Math.round(seconds * 1000));
+			} else if (timeValue.endsWith("m")) {
+				float minutes = Float.parseFloat(timeValue.replace("m", "").trim());
+				return String.valueOf(Math.round(minutes * 60 * 1000));
+			}
+		} catch (Exception e) {
+			throw new ResourceNotReachableException("Can not convert this value: " + e.getMessage(), e);
+		}
+		return timeValue;
 	}
 }

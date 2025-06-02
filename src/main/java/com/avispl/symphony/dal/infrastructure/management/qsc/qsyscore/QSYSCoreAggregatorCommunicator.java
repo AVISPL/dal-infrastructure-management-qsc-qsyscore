@@ -406,6 +406,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				populateQSYSComponent(stats, controllableProperties);
 
 				int currentSizeDeviceMap = deviceMap.size();
+				stats.put(QSYSCoreConstant.NUMBER_OF_DEVICE, String.valueOf(currentSizeDeviceMap));
 
 				if (localPollingInterval == 0) {
 					localPollingInterval = QSYSCoreConstant.MIN_POLLING_INTERVAL;
@@ -424,7 +425,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						}
 					}
 				}
-				stats.put("NumberOfDevices", String.valueOf(currentSizeDeviceMap));
 				populateAggregatedMonitoringData(currentSizeDeviceMap);
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setControllableProperties(controllableProperties);
@@ -461,42 +461,47 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (qrcCommunicator == null) {
 				initQRCCommunicator();
 			}
-			String property = controllableProperty.getProperty();
+			String propertyControl = controllableProperty.getProperty();
 			String value = String.valueOf(controllableProperty.getValue());
 			String deviceId = controllableProperty.getDeviceId();
 			if (this.logger.isDebugEnabled()) {
-				this.logger.debug("controlProperty property " + property);
+				this.logger.debug("controlProperty property " + propertyControl);
 				this.logger.debug("controlProperty value " + value);
 			}
 
-
-			String[] splitProperty = property.split(QSYSCoreConstant.HASH);
+			if (propertyControl == null) {
+				throw new IllegalArgumentException("PropertyControl must not be null");
+			}
+			String[] splitProperty = propertyControl.split(QSYSCoreConstant.HASH);
 
 			// Ex: Gain:Named Component#Gain Value Control
 			// metricName = Gain Value Control
 			// namedComponent = Named Component
-			String metricName = property;
-			if (property.contains(QSYSCoreConstant.HASH)) {
+			String metricName = propertyControl;
+			if (propertyControl.contains(QSYSCoreConstant.HASH)) {
 				metricName = splitProperty[1];
 			}
-			Optional<AggregatedDevice> aggregatedDevice = resultAggregatedDeviceList.stream().filter(item -> item.getDeviceId().equals(deviceId)).findFirst();
+			QSYSPeripheralDevice aggregatedDevice = mapOfIdAndAggregatedDeviceList.get(deviceId);
+			if (aggregatedDevice != null) {
+				Map<String, String> properties = aggregatedDevice.getStats();
+				List<AdvancedControllableProperty> advancedControllableProperties = aggregatedDevice.getAdvancedControllableProperties();
+				String QSYSTypeCommand = aggregatedDevice.getType();
 
-			if (aggregatedDevice.isPresent()) {
-				Map<String, String> properties = aggregatedDevice.get().getProperties();
-				String qsysType = properties.get(QSYSCoreConstant.QSYS_TYPE);
-				String deviceType = convertTypeToDevice(qsysType);
-
-				Map<String, String> stats = localExtStats.getStatistics();
-				List<AdvancedControllableProperty> advancedControllableProperties = localExtStats.getControllableProperties();
-				String metricProperty = getMetricProperty(metricName, deviceType);
+				if (QSYSTypeCommand == null) {
+					logger.error(QSYSCoreConstant.MISSING_QSYS_TYPE_ERR + deviceId + QSYSCoreConstant.SEMICOLON + properties);
+					throw new IllegalArgumentException(QSYSCoreConstant.MISSING_QSYS_TYPE_ERR + deviceId);
+				}
+				String metricProperty = getMetricProperty(propertyControl, QSYSTypeCommand, metricName);
+				String metric = getMetric(propertyControl, QSYSTypeCommand, metricName);
 
 				if (StringUtils.isNotNullOrEmpty(metricProperty)) {
 					if (splitProperty[0].contains(QSYSCoreConstant.CHANNEL)) {
-						String indexChannel = splitProperty[0].replace(QSYSCoreConstant.CHANNEL, "");
+						String indexChannel = convertChannelNameToIndex(splitProperty[0]);
 						metricProperty = metricProperty.replace(QSYSCoreConstant.FORMAT_STRING, indexChannel);
 					}
 					handleControlAggregated(metricProperty, deviceId, value);
-					updateValueForTheControllableProperty(property, value, stats, advancedControllableProperties);
+					aggregatedDevice.controlDevice(aggregatedDevice, metric, value, propertyControl);
+					updateValueForTheControllableProperty(propertyControl, value, properties, advancedControllableProperties);
 				}
 			}
 			List<String> splitComponent = Arrays.asList(splitProperty[0].split(QSYSCoreConstant.COLON, 2));
@@ -504,7 +509,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				case QSYSCoreConstant.GAIN:
 					String gainComponent = splitComponent.size() > 1 ? splitComponent.get(1) : splitComponent.get(0);
 					gainControl(metricName, gainComponent, value);
-					updateGainControlByMetricName(metricName, value, property);
+					updateGainControlByMetricName(metricName, value, propertyControl);
 					break;
 				default:
 					logger.debug("Component Name doesn't support: " + metricName);
@@ -987,6 +992,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			return new ReceiverDevice();
 			case QSYSCoreConstant.LOUDSPEAKER_DEVICE:
 				return new LoudSpeakerDevice();
+			case QSYSCoreConstant.STATUS_AMP_DEVICE:
+				return new Amplifier_CXQ_StatusDevice();
 			default:
 				this.logger.error("Type " + type + " does not exist");
 				return null;
@@ -1139,43 +1146,57 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	}
 
 	/**
-	 * Converts a device type to its corresponding device name.
-	 *
-	 * @param type The type of the device (e.g., "Transmitter", "Amplifier", "Receiver", "LoudSpeaker").
-	 * @return The corresponding device name based on the provided type.
-	 * @throws IllegalArgumentException If the provided type is unknown.
-	 */
-	private static String convertTypeToDevice(String type) {
-		switch (type) {
-			case QSYSCoreConstant.TRANSMITTER_TYPE:
-				return QSYSCoreConstant.TRANSMITTER_DEVICE;
-			case QSYSCoreConstant.AMPLIFIER_TYPE:
-				return QSYSCoreConstant.AMPLIFIER_DEVICE;
-			case QSYSCoreConstant.RECEIVER_TYPE:
-				return QSYSCoreConstant.RECEIVER_DEVICE;
-			case QSYSCoreConstant.LOUDSPEAKER_TYPE:
-				return QSYSCoreConstant.LOUDSPEAKER_DEVICE;
-			default:
-				throw new IllegalArgumentException("Unknown type: " + type);
-		}
-	}
-
-	/**
 	 * Retrieves the property associated with a given metric name for a specific device model.
 	 *
-	 * @param metricName  The name of the metric to look up.
+	 * @param property  The name of the metric to look up.
 	 * @param deviceModel The model of the device to determine the appropriate metric class.
 	 * @return The corresponding property of the metric if found, otherwise null.
 	 */
-	private String getMetricProperty(String metricName, String deviceModel) {
+	private String getMetricProperty(String property, String deviceModel, String metricValue) {
 		Class<? extends DeviceMetric> metricClass = getDeviceMetricClass(deviceModel);
-		return (metricClass == null) ? null
-				: Arrays.stream(metricClass.getEnumConstants())
-						.filter(metric -> metric.getMetric().contains(metricName))
-						.map(DeviceMetric::getProperty)
-						.findFirst()
-						.orElse(null);
+		if (metricClass == null) {
+			return null;
+		}
+		for (DeviceMetric metric : metricClass.getEnumConstants()) {
+			String metricPattern = metric.getMetric();
+			if (metricPattern.contains(QSYSCoreConstant.FORMAT_STRING)
+					&& property.contains(QSYSCoreConstant.HASH)
+					&& property.startsWith(QSYSCoreConstant.CHANNEL) && metricPattern.contains(metricValue)) {
+				return metric.getProperty();
+			}
+			if (metricPattern.equalsIgnoreCase(property)) {
+				return metric.getProperty();
+			}
+		}
+		return null;
 	}
+
+	/**
+	 * Retrieves the metric based on the given property, device model, and metric value.
+	 *
+	 * @param property The property to be matched with the metric pattern.
+	 * @param deviceModel The model of the device, used to retrieve the corresponding metric class.
+	 * @param metricValue The metric value to check if the property and metric pattern match.
+	 */
+	private String getMetric(String property, String deviceModel, String metricValue) {
+		Class<? extends DeviceMetric> metricClass = getDeviceMetricClass(deviceModel);
+		if (metricClass == null) {
+			return null;
+		}
+		for (DeviceMetric metric : metricClass.getEnumConstants()) {
+			String metricPattern = metric.getMetric();
+			if (metricPattern.contains(QSYSCoreConstant.FORMAT_STRING)
+					&& property.contains(QSYSCoreConstant.HASH)
+					&& property.startsWith(QSYSCoreConstant.CHANNEL) && metricPattern.contains(metricValue)) {
+				return metric.getMetric();
+			}
+			if (metricPattern.equalsIgnoreCase(property)) {
+				return metric.getMetric();
+			}
+		}
+		return null;
+	}
+
 
 	/**
 	 * Retrieves the corresponding DeviceMetric class based on the given device type.
@@ -1384,6 +1405,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				case QSYSCoreConstant.AMPLIFIER_TYPE:
 					filterDeviceByQSYSTypeSet.add(QSYSCoreConstant.AMPLIFIER_DEVICE);
 					break;
+				case QSYSCoreConstant.STATUS_AMPLIFIER_TYPE:
+					filterDeviceByQSYSTypeSet.add(QSYSCoreConstant.STATUS_AMP_DEVICE);
+					break;
 				case QSYSCoreConstant.RECEIVER_TYPE:
 					filterDeviceByQSYSTypeSet.add(QSYSCoreConstant.RECEIVER_DEVICE);
 					break;
@@ -1433,6 +1457,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				return QSYSCoreConstant.RECEIVER_TYPE;
 			case QSYSCoreConstant.LOUDSPEAKER_DEVICE:
 				return QSYSCoreConstant.LOUDSPEAKER_TYPE;
+			case QSYSCoreConstant.STATUS_AMP_DEVICE:
+				return QSYSCoreConstant.STATUS_AMPLIFIER_TYPE;
 			default:
 				return QSYSCoreConstant.DEFAUL_DATA;
 		}
@@ -1642,5 +1668,31 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			pluginConfigs.add(deviceName.trim().toLowerCase(Locale.ROOT));
 		}
 		return pluginConfigs;
+	}
+
+	/**
+	 * Converts a channel name into its corresponding index representation as a string.
+	 * The method removes the prefix defined by {@code QSYSCoreConstant.CHANNEL} from the
+	 * input channel name, then converts any letters to their alphabetical index (A=1, B=2, ...)
+	 * and appends digits as-is to form the final index string.
+	 * @param channelName the full channel name string, expected to start with the prefix defined
+	 *                    in {@code QSYSCoreConstant.CHANNEL}, e.g. "ChannelA"
+	 * @return a string representing the channel index where letters are converted to numbers
+	 *         (A=1, B=2, ...) and digits are preserved; returns an empty string if
+	 *         {@code channelName} is null or does not contain any letters/digits after the prefix
+	 */
+	private String convertChannelNameToIndex(String channelName) {
+		String valuePart = channelName.replaceFirst("^" + QSYSCoreConstant.CHANNEL, "");
+		StringBuilder result = new StringBuilder();
+
+		for (char c : valuePart.toCharArray()) {
+			if (Character.isLetter(c)) {
+				int num = Character.toUpperCase(c) - 'A' + 1;
+				result.append(num);
+			} else if (Character.isDigit(c)) {
+				result.append(c);
+			}
+		}
+		return result.toString();
 	}
 }
