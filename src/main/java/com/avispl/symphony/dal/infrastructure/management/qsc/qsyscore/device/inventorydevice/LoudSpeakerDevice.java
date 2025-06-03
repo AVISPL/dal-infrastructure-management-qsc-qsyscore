@@ -197,7 +197,7 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 						if (!value.contains("---") && !value.startsWith(">")) {
 							processedValue = value.replaceAll(Pattern.quote("Ω") + "\\s*$", "");
 						}
-						this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(processedValue) ? processedValue : QSYSCoreConstant.DEFAUL_DATA);
+						this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(processedValue) ? QSYSCoreConstant.NOT_AVAILABLE : QSYSCoreConstant.DEFAUL_DATA);
 						break;
 					case FULL_RANGE_LOW_PILOT_IMPEDANCE:
 					case FULL_RANGE_HIGH_PILOT_IMPEDANCE:
@@ -205,7 +205,7 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 						if(!value.contains("---")){
 							value = value.replaceAll(Pattern.quote("kΩ") + "\\s*$", "");
 						}
-						this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
+						this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? QSYSCoreConstant.NOT_AVAILABLE : QSYSCoreConstant.DEFAUL_DATA);
 						break;
 					case FULL_RANGE_LOW_PILOT_TON:
 					case FULL_RANGE_HIGH_PILOT_TON:

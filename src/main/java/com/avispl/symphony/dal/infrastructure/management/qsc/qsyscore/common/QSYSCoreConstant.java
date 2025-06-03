@@ -38,6 +38,7 @@ public class QSYSCoreConstant {
 	public static final String GAIN = "Gain";
 	public static final String GAIN_TYPE = "gain";
 	public static final String DEFAUL_DATA = "None";
+	public static final String NOT_AVAILABLE = "N/A";
 	public static final String FORMAT_STRING = "%s";
 	public static final String DB_UNIT = "dB";
 	public static final String EMPTY = "";

@@ -23,16 +23,16 @@ public enum LoudSpeakerDeviceMetric implements DeviceMetric {
 	FULL_RANGE_OPEN("Fullrange#Open", "band.0.open.circuit"),
 	FULL_RANGE_SHORT("Fullrange#Short", "band.0.short.circuit"),
 
-	FULL_RANGE_OPEN_THRESHOLD("Fullrange#OpenThreshold(Ω)", "band.0.open.circuit.threshold"),
-	FULL_RANGE_SHORT_THRESHOLD("Fullrange#ShortThreshold(Ω)", "band.0.short.circuit.threshold"),
+	FULL_RANGE_OPEN_THRESHOLD("Fullrange#OpenThreshold(Ohm)", "band.0.open.circuit.threshold"),
+	FULL_RANGE_SHORT_THRESHOLD("Fullrange#ShortThreshold(Ohm)", "band.0.short.circuit.threshold"),
 
-	FULL_RANGE_HIGH_PILOT_IMPEDANCE("Fullrange#HighPilotImpedance", "band.0.high.pilot.impedance"),
+	FULL_RANGE_HIGH_PILOT_IMPEDANCE("Fullrange#HighPilotImpedance(Ohm)", "band.0.high.pilot.impedance"),
 	FULL_RANGE_HIGH_PILOT_TON("Fullrange#HighPilotTone", "band.0.high.pilot.tone.enable"),
 
-	FULL_RANGE_LOW_PILOT_IMPEDANCE("Fullrange#LowPilotImpedance", "band.0.low.pilot.impedance"),
+	FULL_RANGE_LOW_PILOT_IMPEDANCE("Fullrange#LowPilotImpedance(Ohm)", "band.0.low.pilot.impedance"),
 	FULL_RANGE_LOW_PILOT_TON("Fullrange#LowPilotTone", "band.0.low.pilot.tone.enable"),
 
-	FULL_RANGE_IMPEDANCE("Fullrange#Impedance", "band.0.impedance"),
+	FULL_RANGE_IMPEDANCE("Fullrange#Impedance(Ohm)", "band.0.impedance"),
 
 	FULL_RANGE_VOLTAGE("Fullrange#Voltage(V)", "band.0.voltage"),
 	FULL_RANGE_CURRENT("Fullrange#Current(A)", "band.0.current"),
