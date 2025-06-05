@@ -1,32 +1,32 @@
 /*
- * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
+ * Copyright (c) 2025 AVI-SPL, Inc. All Rights Reserved.
  */
-
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice;
+import java.util.Collections;
+import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.CameraDeviceMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.Amplifier_CXQ_StatusDeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.EnumTypeHandler;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.QSYSPeripheralDevice;
 import com.avispl.symphony.dal.util.StringUtils;
 
 /**
- * CameraDevice
+ * Amplifier_CXQ_StatusDevice
  *
- * @author Kevin / Symphony Dev Team<br>
- * Created on 6/30/2023
- * @since 1.0.0
+ * @author Harry / Symphony Dev Team<br>
+ * @since 1.1.0
  */
-public class CameraDevice extends QSYSPeripheralDevice {
+public class Amplifier_CXQ_StatusDevice extends QSYSPeripheralDevice {
+
 	/**
 	 * Manage are control of device
 	 *
 	 */
 	@Override
 	public void controlDevice(QSYSPeripheralDevice device, String property, String value, String metricName) {
-
 	}
 
 	/**
@@ -38,14 +38,22 @@ public class CameraDevice extends QSYSPeripheralDevice {
 	public void monitoringDevice(JsonNode deviceControl) {
 		this.getStats().clear();
 		this.getAdvancedControllableProperties().clear();
+		List<Amplifier_CXQ_StatusDeviceMetric> metrics = Collections.singletonList(
+				Amplifier_CXQ_StatusDeviceMetric.TEMPERATURE
+		);
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
-				CameraDeviceMetric cameraDeviceMetric = EnumTypeHandler.getMetricByName(CameraDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
-				if (cameraDeviceMetric == null) {
+				Amplifier_CXQ_StatusDeviceMetric metric = EnumTypeHandler.getMetricByPropertyName(Amplifier_CXQ_StatusDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
+				if (metric == null) {
 					continue;
 				}
+
 				String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
-				this.getStats().put(cameraDeviceMetric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
+				if (metrics.contains(metric)) {
+					value = value.replace("°C", QSYSCoreConstant.EMPTY);
+				}
+				String metricName = getFormattedMetricName(metric, control);
+				this.getStats().put(metricName, StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 			}
 			super.updateStatusMessage();
 		}

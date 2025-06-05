@@ -15,6 +15,7 @@ public enum ReceiverDeviceMetric implements DeviceMetric {
 	INTERFACE("Connection#Interface", "interface"),
 	NETWORK_RX_BUFFER("Connection#NetworkRxBuffer", "network.buffer"),
 	STREAM_NAME("Connection#StreamName", "stream.name"),
+	PRIMARY_OK("Connection#PrimaryOk", "primary.ok"),
 
 	STATUS("Status", "status"),
 	STATUS_LED("StatusLed", "status.led"),

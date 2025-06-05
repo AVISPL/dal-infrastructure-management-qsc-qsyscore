@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableMap;
@@ -24,20 +27,52 @@ import com.avispl.symphony.dal.util.StringUtils;
  * AmplifierDevice class to implement monitoring and controlling for Amplifier device
  *
  * @author Harry / Symphony Dev Team<br>
- * @since 1.0.0
+ * @since 1.1.0
  */
 public class AmplifierDevice extends QSYSPeripheralDevice {
-
-	private final Map<String, Integer> previousChannelMuteValues = new HashMap<>();
-
 	/**
 	 * Manage are control of device
 	 *
-	 * @param response String store all information of a control
 	 */
 	@Override
-	public void controlDevice(JsonNode response) {
-
+	public void controlDevice(QSYSPeripheralDevice device, String property, String value, String metricName) {
+			try {
+				Map<String, String> stats = Optional.ofNullable(device.getStats()).orElse(new HashMap<>());
+				Optional<AmplifierDeviceMetric> optionalMetric = Arrays.stream(AmplifierDeviceMetric.values())
+						.filter(metric -> metric != null && metric.getMetric() != null && metric.getMetric().equalsIgnoreCase(property))
+						.findFirst();
+				if (!optionalMetric.isPresent()) {
+					throw new IllegalArgumentException("Error: Can not control this property " + property);
+				}
+				AmplifierDeviceMetric metric = optionalMetric.get();
+				if (METRIC_LIST.contains(metric)) {
+					for (Map.Entry<String, String> entry : UNIT_REPLACEMENTS.entrySet()) {
+						value = value.replace(entry.getKey(), entry.getValue());
+					}
+				}
+				switch (metric){
+					case CHANNEL_GAIN:
+						addAdvancedControlProperties(this.getAdvancedControllableProperties(), stats, createSlider(stats,
+								metricName, "-100", "20", -100f, 20f, Float.parseFloat(value)), value);
+						stats.put(getFormattedMetricNameSlider(metricName), value);
+						break;
+					case POWER_SAVE_THRESHOLD:
+						addAdvancedControlProperties(this.getAdvancedControllableProperties(), stats, createSlider(stats,
+								metricName, "-99", "-50", -99.0f, -50.0f, Float.parseFloat(value)), value);
+						stats.put(getFormattedMetricNameSlider(metricName), value);
+						break;
+					case POWER_SAVE_TIMEOUT:
+						addAdvancedControlProperties(this.getAdvancedControllableProperties(), stats, createSlider(stats,
+								metricName, "1", "99", 1.0f, 99.0f, Float.parseFloat(value)), value);
+						stats.put("PowerManagement#PowerSaveTimeoutCurrentValue", value);
+						break;
+					default:
+						break;
+				}
+				super.updateStatusMessage();
+			}catch (Exception e){
+				throw new ResourceNotReachableException("Error occurred while monitoring device control: " + e.getMessage(), e);
+			}
 	}
 
 	/**
@@ -61,7 +96,6 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 			AmplifierDeviceMetric.VRAIL_2,
 			AmplifierDeviceMetric.CHANNEL_VOLTAGE,
 			AmplifierDeviceMetric.CHANNEL_POWER,
-			AmplifierDeviceMetric.METER_SELECT,
 			AmplifierDeviceMetric.PSU_TEMP
 	);
 
@@ -90,8 +124,6 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 	@Override
 	public void monitoringDevice(JsonNode deviceControl) {
 		try {
-			int muteAll = 0;
-			int meterValue = 0;
 			this.getStats().clear();
 			this.getAdvancedControllableProperties().clear();
 
@@ -101,7 +133,13 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 			}
 
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
-				AmplifierDeviceMetric metric = EnumTypeHandler.getMetricByPropertyName(AmplifierDeviceMetric.class, control.get(QSYSCoreConstant.CONTROL_NAME).asText());
+				String controlName = Optional.ofNullable(control.get(QSYSCoreConstant.CONTROL_NAME))
+						.map(JsonNode::asText)
+						.orElse(null);
+				if (controlName == null) {
+					continue;
+				}
+				AmplifierDeviceMetric metric = EnumTypeHandler.getMetricByPropertyName(AmplifierDeviceMetric.class, controlName);
 				if (metric == null) {
 					continue;
 				}
@@ -115,64 +153,44 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 				String metricName = getFormattedMetricNameAmplifier(metric, control);
 				switch (metric){
 					case ON_STANDBY:
-					case GAIN_LOCK:
-					case MUTE_LOCK:
-					case DISABLE_POWER_SAVE:
-						int status = value.equalsIgnoreCase("enabled") || value.equalsIgnoreCase("true")
-								|| value.equalsIgnoreCase("on") ? 1 : 0;
+						int standByStatus = value.equalsIgnoreCase("on") ? 1 : 0;
 						addAdvancedControlProperties(
 								this.getAdvancedControllableProperties(),
 								getStats(),
-								createSwitch(metricName, status, "Off", "On"),
+								createSwitch(metricName, standByStatus, QSYSCoreConstant.OFF, QSYSCoreConstant.ON),
+								String.valueOf(standByStatus)
+						);
+						break;
+					case GAIN_LOCK:
+					case MUTE_LOCK:
+					case DISABLE_POWER_SAVE:
+						int status = value.equalsIgnoreCase(QSYSCoreConstant.ENABLED) || value.equalsIgnoreCase(QSYSCoreConstant.TRUE) ? 1 : 0;
+						addAdvancedControlProperties(
+								this.getAdvancedControllableProperties(),
+								getStats(),
+								createSwitch(metricName, status, QSYSCoreConstant.OFF, QSYSCoreConstant.ON),
 								String.valueOf(status)
 						);
 						break;
 					case POWER_METERS:
-						meterValue = value.equalsIgnoreCase("enabled") ? 1 : 0;
+						int meterValue = value.equalsIgnoreCase(QSYSCoreConstant.ENABLED) ? 1 : 0;
 						addAdvancedControlProperties(
 								this.getAdvancedControllableProperties(),
 								getStats(),
-								createSwitch(metricName, meterValue, "Off", "On"),
+								createSwitch(metricName, meterValue, QSYSCoreConstant.OFF, QSYSCoreConstant.ON),
 								String.valueOf(meterValue)
 						);
 						break;
-					case CHANNEL_VOLTAGE:
-					case CHANNEL_CURRENT:
-						if(meterValue == 0){
-							this.getStats().remove(metricName);
-						} else {
-							this.getStats().put(metricName, StringUtils.isNotNullOrEmpty(value) ? uppercaseFirstCharacter(value) : QSYSCoreConstant.DEFAUL_DATA);
-						}
-						break;
 					case MUTE_ALL:
-						muteAll = value.equalsIgnoreCase("unmuted") ? 1 : 0;
+					case FRONT_PANEL_DISABLE:
+					case CHANNEL_MUTE:
+						int mute = value.equalsIgnoreCase(QSYSCoreConstant.MUTED) ? 1 : 0;
 						addAdvancedControlProperties(
 								this.getAdvancedControllableProperties(),
 								getStats(),
-								createSwitch(metricName, muteAll, "Off", "On"),
-								String.valueOf(muteAll)
+								createSwitch(metricName, mute, QSYSCoreConstant.OFF, QSYSCoreConstant.ON),
+								String.valueOf(mute)
 						);
-						break;
-					case CHANNEL_MUTE:
-						int channelMute = value.equalsIgnoreCase("unmuted") ? 1 : 0;
-						if(muteAll == 1) {
-							previousChannelMuteValues.putIfAbsent(metricName, channelMute);
-							addAdvancedControlProperties(
-									this.getAdvancedControllableProperties(),
-									getStats(),
-									createSwitch(metricName, muteAll, "Off", "On"),
-									String.valueOf(muteAll)
-							);
-						} else {
-							int previousValue = previousChannelMuteValues.getOrDefault(metricName, channelMute);
-							previousChannelMuteValues.remove(metricName);
-							addAdvancedControlProperties(
-									this.getAdvancedControllableProperties(),
-									getStats(),
-									createSwitch(metricName, previousValue, "Off", "On"),
-									String.valueOf(previousValue)
-							);
-						}
 						break;
 					case METER_SELECT:
 						String[] options = { "Peak", "RMS" };
@@ -192,6 +210,20 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metricName, "1", "99", 1.0f, 99.0f, Float.parseFloat(value)), value);
 						this.getStats().put("PowerManagement#PowerSaveTimeoutCurrentValue", value);
+						break;
+					case CHANNEL_VOLTAGE:
+					case CHANNEL_CURRENT:
+					case CHANNEL_POWER:
+					case AC_CURRENT:
+					case AC_VOLTAGE:
+						if (StringUtils.isNotNullOrEmpty(value)) {
+							if (value.matches("^\\.\\d+$")) {
+								value = QSYSCoreConstant.ZERO + value;
+							}
+							this.getStats().put(metricName, value);
+						} else {
+							this.getStats().put(metricName, QSYSCoreConstant.DEFAUL_DATA);
+						}
 						break;
 					case CHANNEL_DAC_LIMIT:
 					case CHANNEL_LIMIT:
@@ -236,15 +268,26 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 
 	/**
 	 * Formats the metric name based on the given control data for Amplifier.
-	 * Replace Channel group from 1,2,3,4 to A,B,C,D
+	 * Replace Channel group numbers (e.g., 1, 2, 3, ...) with corresponding letters (A, B, C, ...).
 	 *
-	 * @param input containing the name of metric.
+	 * @param input containing the name of the metric.
+	 * @return formatted metric name with channel numbers replaced by letters.
 	 */
 	private String convertChannelNumbersToLetters(String input) {
-		return input.replaceAll("Channel1", "ChannelA")
-				.replaceAll("Channel2", "ChannelB")
-				.replaceAll("Channel3", "ChannelC")
-				.replaceAll("Channel4", "ChannelD");
+		Matcher matcher = Pattern.compile("Channel(\\d+)").matcher(input);
+		StringBuffer result = new StringBuffer();
+		while (matcher.find()) {
+			int channelNumber = Integer.parseInt(matcher.group(1));
+
+			if (channelNumber >= 1 && channelNumber <= 26) {
+				char letter = (char) ('A' + channelNumber - 1);
+				matcher.appendReplacement(result, "Channel" + letter);
+			} else {
+				matcher.appendReplacement(result, matcher.group(0));
+			}
+		}
+		matcher.appendTail(result);
+		return result.toString();
 	}
 
 }
