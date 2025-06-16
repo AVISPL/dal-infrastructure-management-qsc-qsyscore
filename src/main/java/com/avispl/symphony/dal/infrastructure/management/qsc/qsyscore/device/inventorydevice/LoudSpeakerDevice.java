@@ -207,8 +207,6 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 						}
 						this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? QSYSCoreConstant.NOT_AVAILABLE : QSYSCoreConstant.DEFAUL_DATA);
 						break;
-					case FULL_RANGE_LOW_PILOT_TON:
-					case FULL_RANGE_HIGH_PILOT_TON:
 					case FULL_RANGE_OPEN:
 					case FULL_RANGE_SHORT:
 						this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
