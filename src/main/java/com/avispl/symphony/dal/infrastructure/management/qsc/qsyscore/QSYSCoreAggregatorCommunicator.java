@@ -185,6 +185,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private Set<String> filterDeviceByNameSet;
 
 	/**
+	 * Store the device name
+	 */
+	private String aggregatorDeviceName;
+
+	/**
 	 * Map save all device
 	 */
 	public volatile TreeMap<String, QSYSPeripheralDevice> deviceMap = new TreeMap<>();
@@ -567,7 +572,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				if ((StringUtils.isNullOrEmpty(filterDeviceByQSYSType) || filterDeviceByQSYSTypeSet.contains(device.getValue().getType())) && (StringUtils.isNullOrEmpty(filterDeviceByName)
 						|| filterDeviceByNameSet.contains(device.getKey()))) {
 					AggregatedDevice aggregatedDevice = new AggregatedDevice();
-					aggregatedDevice.setDeviceId(device.getKey());
+					aggregatedDevice.setDeviceId(aggregatorDeviceName + "_" + device.getKey());
 					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
 					if(deviceStatus != null){
 					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.LIST_ONLINE_STATUS.stream()
@@ -765,6 +770,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (deviceInfo != null && deviceInfo.getDeviceInfoData() != null) {
 				for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
 					if (QSYSCoreSystemMetric.UPTIME.getName().equals(propertiesName.getName())) {
+						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
+						continue;
+					} else if(QSYSCoreSystemMetric.DEVICE_NAME.getName().equals(propertiesName.getName())){
+						aggregatorDeviceName = deviceInfo.getValueByMetricName(propertiesName);
 						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
 						continue;
 					}
