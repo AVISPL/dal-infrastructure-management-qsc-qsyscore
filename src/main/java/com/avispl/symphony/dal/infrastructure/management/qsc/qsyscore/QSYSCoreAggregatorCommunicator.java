@@ -421,7 +421,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 				populateQSYSAggregatorMonitoringData(stats);
 				populateQSYSComponent(stats, controllableProperties);
-				retrieveMetadata(stats, dynamicStatistics);
+				retrieveMetadata(stats);
 
 				int currentSizeDeviceMap = deviceMap.size();
 				stats.put(QSYSCoreConstant.NUMBER_OF_DEVICE, String.valueOf(currentSizeDeviceMap));
@@ -572,7 +572,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				if ((StringUtils.isNullOrEmpty(filterDeviceByQSYSType) || filterDeviceByQSYSTypeSet.contains(device.getValue().getType())) && (StringUtils.isNullOrEmpty(filterDeviceByName)
 						|| filterDeviceByNameSet.contains(device.getKey()))) {
 					AggregatedDevice aggregatedDevice = new AggregatedDevice();
-					aggregatedDevice.setDeviceId(aggregatorDeviceName + "_" + device.getKey());
+					aggregatedDevice.setDeviceId(device.getKey());
 					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
 					if(deviceStatus != null){
 					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.LIST_ONLINE_STATUS.stream()
@@ -728,10 +728,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * Retrieves metadata information and updates the provided statistics and dynamic map.
 	 *
 	 * @param stats the map where statistics will be stored
-	 * @param dynamicStatistics the map where dynamic statistics will be stored
 	 * @throws Exception if there is an error during the retrieval process
 	 */
-	private void retrieveMetadata(Map<String, String> stats, Map<String, String> dynamicStatistics) throws Exception {
+	private void retrieveMetadata(Map<String, String> stats) throws Exception {
 		try {
 			stats.put(QSYSCoreConstant.ADAPTER_VERSION,
 					getDefaultValueForNullData(adapterProperties.getProperty("aggregator.version")));
