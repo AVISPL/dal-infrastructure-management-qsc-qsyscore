@@ -36,10 +36,11 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCo
  * @since 1.0.0
  */
 public class TestQSYSCoreAggregatorCommunicator {
-	public QSYSCoreAggregatorCommunicator qSYSCoreCommunicator = new QSYSCoreAggregatorCommunicator();
+	private QSYSCoreAggregatorCommunicator qSYSCoreCommunicator;
 
 	@BeforeEach()
 	public void setUp() throws Exception {
+		qSYSCoreCommunicator = new QSYSCoreAggregatorCommunicator();
 		qSYSCoreCommunicator.setHost("");
 		qSYSCoreCommunicator.setLogin("");
 		qSYSCoreCommunicator.setPassword("");
@@ -384,25 +385,7 @@ public class TestQSYSCoreAggregatorCommunicator {
 		Thread.sleep(30000);
 		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
 		System.out.println(aggregatedDeviceList);
-		Assert.assertEquals(25, aggregatedDeviceList.size());
-	}
-
-	@Test
-	void testGetControllableProp() throws Exception {
-		qSYSCoreCommunicator.getMultipleStatistics();
-		qSYSCoreCommunicator.retrieveMultipleStatistics();
-		Thread.sleep(20000);
-		ControllableProperty controllableProperty = new ControllableProperty();
-
-		String property = "Channel1#Mute";
-		String deviceId = "AES67_Transmitter_AES67-TX-1";
-		String value = "1";
-		controllableProperty.setProperty(property);
-		controllableProperty.setValue(value);
-		controllableProperty.getProperty();
-		controllableProperty.setDeviceId(deviceId);
-
-		qSYSCoreCommunicator.controlProperty(controllableProperty);
+		Assert.assertEquals(39, aggregatedDeviceList.size());
 	}
 
 	@Test
@@ -482,7 +465,8 @@ public class TestQSYSCoreAggregatorCommunicator {
 		qSYSCoreCommunicator.getMultipleStatistics().get(0);
 		Thread.sleep(30000);
 		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
-		AggregatedDevice aggregatedDevice = aggregatedDeviceList.stream().filter(item -> item.getDeviceName().equals("Status_CeeSalt-Core110f")).findFirst().orElse(new AggregatedDevice());
+		AggregatedDevice aggregatedDevice = aggregatedDeviceList.stream().filter(item -> item.getDeviceName().equals("Status_Core-1")).findFirst().orElse(new AggregatedDevice());
+		System.out.println(aggregatedDevice.getDynamicStatistics());
 		Assert.assertNotNull(aggregatedDevice.getDynamicStatistics().get("ProcessorTemperature(C)"));
 	}
 
@@ -565,4 +549,27 @@ public class TestQSYSCoreAggregatorCommunicator {
 			}
 		}
 	}
+
+	@Test
+	void testControllableTransmitter() throws Exception {
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(20000);
+
+		ControllableProperty controllableProperty = new ControllableProperty();
+
+		String property = "Channel1#Invert";
+//		String deviceId = "Amp_Output_Amplifier-1_CX-Q_2K4";
+ 		String deviceId = "AES67_Receiver_AES67-RX-1";
+//		String deviceId = "Generic_Speaker_Speaker-2";
+		String value = "0";
+		controllableProperty.setProperty(property);
+		controllableProperty.setValue(value);
+		controllableProperty.setDeviceId(deviceId);
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		qSYSCoreCommunicator.controlProperty(controllableProperty);
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+	}
+
 }
