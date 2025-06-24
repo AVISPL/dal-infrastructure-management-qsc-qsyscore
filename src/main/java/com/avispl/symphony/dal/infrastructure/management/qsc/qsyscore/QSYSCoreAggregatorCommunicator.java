@@ -3,6 +3,7 @@
  */
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore;
 
+import java.io.IOException;
 import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -110,6 +111,14 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private volatile int deviceStatisticsCollectionThreads;
 
+	/** Adapter metadata properties - adapter version and build date */
+	private Properties adapterProperties;
+
+	/**
+	 * Device adapter instantiation timestamp.
+	 */
+	private long adapterInitializationTimestamp;
+
 	/**
 	 * store pollingInterval adapter properties
 	 */
@@ -176,6 +185,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private Set<String> filterDeviceByNameSet;
 
 	/**
+	 * Store the device name
+	 */
+//	private String aggregatorDeviceName;
+
+	/**
 	 * Map save all device
 	 */
 	public volatile TreeMap<String, QSYSPeripheralDevice> deviceMap = new TreeMap<>();
@@ -219,7 +233,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private volatile boolean isQrcCommunicatorFirstTimeInit = true;
 
-	public QSYSCoreAggregatorCommunicator() {
+	public QSYSCoreAggregatorCommunicator() throws IOException {
+		adapterProperties = new Properties();
+		adapterProperties.load(getClass().getResourceAsStream("/version.properties"));
 		this.setTrustAllCertificates(true);
 	}
 
@@ -368,6 +384,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (!isEmergencyDelivery) {
 				deviceMap.clear();
 				Map<String, String> stats = new HashMap<>();
+				Map<String, String> dynamicStatistics = new HashMap<>();
 				List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
 
 				// The QSys Core socket closes automatically after 60 seconds (as specified in the API document),
@@ -404,6 +421,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 				populateQSYSAggregatorMonitoringData(stats);
 				populateQSYSComponent(stats, controllableProperties);
+				retrieveMetadata(stats);
 
 				int currentSizeDeviceMap = deviceMap.size();
 				stats.put(QSYSCoreConstant.NUMBER_OF_DEVICE, String.valueOf(currentSizeDeviceMap));
@@ -427,6 +445,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 				populateAggregatedMonitoringData(currentSizeDeviceMap);
 				extendedStatistics.setStatistics(stats);
+				extendedStatistics.setDynamicStatistics(dynamicStatistics);
 				extendedStatistics.setControllableProperties(controllableProperties);
 				localExtStats = extendedStatistics;
 			}
@@ -690,7 +709,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	protected void internalInit() throws Exception {
 		loginInfo = null;
 		localPollingInterval = 0;
-
+		adapterInitializationTimestamp = System.currentTimeMillis();
 		if (logger.isDebugEnabled()) {
 			logger.debug("Internal init is called.");
 		}
@@ -703,6 +722,27 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	protected LoginInfo initLoginInfo() {
 		return new LoginInfo();
+	}
+
+	/**
+	 * Retrieves metadata information and updates the provided statistics and dynamic map.
+	 *
+	 * @param stats the map where statistics will be stored
+	 * @throws Exception if there is an error during the retrieval process
+	 */
+	private void retrieveMetadata(Map<String, String> stats) throws Exception {
+		try {
+			stats.put(QSYSCoreConstant.ADAPTER_VERSION,
+					getDefaultValueForNullData(adapterProperties.getProperty("aggregator.version")));
+			stats.put(QSYSCoreConstant.ADAPTER_BUILD_DATE,
+					getDefaultValueForNullData(adapterProperties.getProperty("aggregator.build.date")));
+
+			long adapterUptime = System.currentTimeMillis() - adapterInitializationTimestamp;
+			stats.put(QSYSCoreConstant.ADAPTER_UPTIME_MIN, String.valueOf(adapterUptime / (1000 * 60)));
+			stats.put(QSYSCoreConstant.ADAPTER_UPTIME, formatUpTime(String.valueOf(adapterUptime / 1000)));
+		} catch (Exception e) {
+			logger.error("Failed to populate metadata information", e);
+		}
 	}
 
 	/**
@@ -729,6 +769,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			if (deviceInfo != null && deviceInfo.getDeviceInfoData() != null) {
 				for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
 					if (QSYSCoreSystemMetric.UPTIME.getName().equals(propertiesName.getName())) {
+						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
+						continue;
+					} else if(QSYSCoreSystemMetric.DEVICE_NAME.getName().equals(propertiesName.getName())){
+//						aggregatorDeviceName = deviceInfo.getValueByMetricName(propertiesName);
 						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
 						continue;
 					}
@@ -1230,6 +1274,66 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			// Handle null pointer exception when use this method
 			return null;
 		}
+	}
+
+	/**
+	 * check value is null or empty
+	 *
+	 * @param value input value
+	 * @return value after checking
+	 */
+	private String getDefaultValueForNullData(String value) {
+		return StringUtils.isNotNullOrEmpty(value) && !QSYSCoreConstant.NULL.equalsIgnoreCase(value) ? uppercaseFirstCharacter(value) : QSYSCoreConstant.NONE_VALUE;
+	}
+
+	/**
+	 * Formats uptime from a string representation "hh:mm:ss" into "X hour(s) Y minute(s)" format.
+	 *
+	 * @param time the uptime string to format
+	 * @return formatted uptime string or "None" if input is invalid
+	 */
+	private String formatUpTime(String time) {
+		int seconds = Integer.parseInt(time);
+		if (seconds < 0) {
+			return QSYSCoreConstant.NONE_VALUE;
+		}
+
+		int days = seconds / (24 * 3600);
+		seconds %= 24 * 3600;
+		int hours = seconds / 3600;
+		seconds %= 3600;
+		int minutes = seconds / 60;
+		seconds %= 60;
+
+		StringBuilder result = new StringBuilder();
+		if (days > 0) {
+			result.append(days).append(" day(s) ");
+		}
+		if (hours > 0) {
+			result.append(hours).append(" hour(s) ");
+		}
+		if (minutes > 0) {
+			result.append(minutes).append(" minute(s) ");
+		}
+		if (seconds > 0) {
+			result.append(seconds).append(" second(s) ");
+		}
+
+		if (result.length() == 0) {
+			return "0 second(s)";
+		}
+		return result.toString().trim();
+	}
+
+	/**
+	 * capitalize the first character of the string
+	 *
+	 * @param input input string
+	 * @return string after fix
+	 */
+	public String uppercaseFirstCharacter(String input) {
+		char firstChar = input.charAt(0);
+		return Character.toUpperCase(firstChar) + input.substring(1);
 	}
 
 	/**

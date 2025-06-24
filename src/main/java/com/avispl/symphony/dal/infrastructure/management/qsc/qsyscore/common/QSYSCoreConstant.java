@@ -54,7 +54,7 @@ public class QSYSCoreConstant {
 	public static final String CHANNEL = "Channel";
 	public static final String HOSTNAME = "Hostname";
 	public static final String REDUNDANCY = "Redundancy";
-	public static final String NUMBER_OF_DEVICE = "NumberOfDevices";
+	public static final String NUMBER_OF_DEVICE = "MonitoredDevicesTotal";
 	public static final String GAIN_CURRENT_VALUE = "GainCurrentValue(dB)";
 	public static final String CMD_RESULT = "\"result\"";
 	public static final String CMD_METHOD = "\"method\"";
@@ -98,6 +98,15 @@ public class QSYSCoreConstant {
 	public static final String MIDDLE_ATLANTIC = "MiddleAtlanticNEXSYSUPS";
 	public static final String AUDIO_LEVEL_CURRENT_VALUE = "AudioLevelCurrentValue(dB)";
 	public static final String LED_BRIGHTNESS_CURRENT_VALUE = "LEDBrightnessCurrentValue";
+
+	//MetaData
+	public static final String MONITORING_CYCLE_DURATION = "LastMonitoringCycleDuration(s)";
+	public static final String ADAPTER_VERSION = "AdapterVersion";
+	public static final String ADAPTER_BUILD_DATE = "AdapterBuildDate";
+	public static final String ADAPTER_UPTIME_MIN = "AdapterUptime(min)";
+	public static final String ADAPTER_UPTIME = "AdapterUptime";
+	public static final String NULL = "Null";
+	public static final String NONE_VALUE = "None";
 
 	public static final List<String> SOUND_PROFILE = Arrays.asList("Off", "Custom");
 	public static final List<String> NOISE_LEVEL = Arrays.asList("Quiet", "Normal", "Loud");
