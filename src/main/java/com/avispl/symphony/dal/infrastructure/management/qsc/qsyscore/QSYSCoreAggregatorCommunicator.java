@@ -187,7 +187,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * Store the device name
 	 */
-	private String aggregatorDeviceName;
+//	private String aggregatorDeviceName;
 
 	/**
 	 * Map save all device
@@ -772,7 +772,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
 						continue;
 					} else if(QSYSCoreSystemMetric.DEVICE_NAME.getName().equals(propertiesName.getName())){
-						aggregatorDeviceName = deviceInfo.getValueByMetricName(propertiesName);
+//						aggregatorDeviceName = deviceInfo.getValueByMetricName(propertiesName);
 						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
 						continue;
 					}
