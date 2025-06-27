@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -193,19 +194,11 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 						break;
 					case FULL_RANGE_OPEN_THRESHOLD:
 					case FULL_RANGE_SHORT_THRESHOLD:
-						String processedValue = value;
-						if (!value.contains("---") && !value.startsWith(">")) {
-							processedValue = value.replaceAll(Pattern.quote("Ω") + "\\s*$", "");
-						}
-						this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(processedValue) ? QSYSCoreConstant.NOT_AVAILABLE : QSYSCoreConstant.DEFAUL_DATA);
-						break;
 					case FULL_RANGE_LOW_PILOT_IMPEDANCE:
 					case FULL_RANGE_HIGH_PILOT_IMPEDANCE:
 					case FULL_RANGE_IMPEDANCE:
-						if(!value.contains("---")){
-							value = value.replaceAll(Pattern.quote("kΩ") + "\\s*$", "");
-						}
-						this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? QSYSCoreConstant.NOT_AVAILABLE : QSYSCoreConstant.DEFAUL_DATA);
+						String normalizedValue = normalizeNumericValue(value);
+						this.getStats().put(metric.getMetric(), normalizedValue);
 						break;
 					case FULL_RANGE_OPEN:
 					case FULL_RANGE_SHORT:
@@ -228,5 +221,21 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 		} catch (Exception e){
 			throw new ResourceNotReachableException("Error occurred while monitoring device control: " + e.getMessage(), e);
 		}
+	}
+
+	/**
+	 * Normalizes a numeric string by extracting the leading numeric portion, if available.
+	 *   Returning the original string if it is a placeholder ("---") or starts with a '>' character,
+	 *   Otherwise, extracting and returning the leading decimal number (e.g., from "1.46cea9" → "1.46").
+	 *
+	 * @param value the raw string value to normalize
+	 * @return a cleaned numeric string or the original string if non-numeric conditions are met
+	 */
+	private String normalizeNumericValue(String value) {
+		if (value.trim().equals("---") || value.startsWith(">")) {
+			return value;
+		}
+		Matcher matcher = Pattern.compile("^[0-9]+(\\.[0-9]+)?").matcher(value);
+		return matcher.find() ? matcher.group() : value;
 	}
 }
