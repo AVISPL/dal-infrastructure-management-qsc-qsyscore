@@ -4,15 +4,15 @@
 
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device.inventorydevice;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.collect.ImmutableMap;
 
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.EnumTypeHandler;
@@ -44,11 +44,7 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 				throw new IllegalArgumentException("Error: Can not control this property " + property);
 			}
 				LoudSpeakerDeviceMetric metric = optionalMetric.get();
-				if (METRIC_LIST.contains(metric)) {
-					for (Map.Entry<String, String> entry : UNIT_REPLACEMENTS.entrySet()) {
-						value = value.replace(entry.getKey(), entry.getValue());
-					}
-				}
+
 				switch (metric){
 					case GAIN:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), stats, createSlider(stats,
@@ -76,36 +72,6 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 	}
 
 	/**
-	 * A list of predefined metrics for LoudSpeaker devices.
-	 * This list contains various measurement parameters and configurations
-	 * relevant to loudspeakers, such as gain, power, voltage, and delay.
-	 */
-	private static final List<LoudSpeakerDeviceMetric> METRIC_LIST = Arrays.asList(
-			LoudSpeakerDeviceMetric.FULL_RANGE_LIMITER,
-			LoudSpeakerDeviceMetric.GAIN,
-			LoudSpeakerDeviceMetric.FULL_RANGE_HIGH_PASS_FREQ,
-			LoudSpeakerDeviceMetric.FULL_RANGE_CURRENT,
-			LoudSpeakerDeviceMetric.FULL_RANGE_POWER,
-			LoudSpeakerDeviceMetric.DELAY,
-			LoudSpeakerDeviceMetric.FULL_RANGE_VOLTAGE
-	);
-
-	/**
-	 * A mapping of unit symbols to their replacements.
-	 * This map is used to remove specific unit symbols from metric values, ensuring consistency
-	 * in data processing. Any occurrence of these units will be replaced with an empty string.
-	 */
-	private static final Map<String, String> UNIT_REPLACEMENTS = ImmutableMap.<String, String>builder()
-			.put(QSYSCoreConstant.DB_UNIT, QSYSCoreConstant.EMPTY)
-			.put("V", QSYSCoreConstant.EMPTY)
-			.put("A", QSYSCoreConstant.EMPTY)
-			.put("W", QSYSCoreConstant.EMPTY)
-			.put("Hz", QSYSCoreConstant.EMPTY)
-			.put("ms", QSYSCoreConstant.EMPTY)
-			.put("Ω", QSYSCoreConstant.EMPTY)
-			.build();
-
-	/**
 	 * Get all monitoring of device
 	 *
 	 * @param deviceControl list all control of device
@@ -130,16 +96,30 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 				if (metric == null) {
 					continue;
 				}
-				String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
-				if (METRIC_LIST.contains(metric)) {
-					for (Map.Entry<String, String> entry : UNIT_REPLACEMENTS.entrySet()) {
-						value = value.replace(entry.getKey(), entry.getValue());
-					}
+				String type = Optional.ofNullable(control.get(QSYSCoreConstant.CONTROL_TYPE)).map(JsonNode::asText).orElse("");
+				String value;
+
+				switch (type) {
+					case QSYSCoreConstant.TYPE_FLOAT:
+						value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE) ? String.valueOf(control.get(QSYSCoreConstant.CONTROL_VALUE).asDouble()) : QSYSCoreConstant.DEFAUL_DATA;
+						break;
+					case QSYSCoreConstant.TYPE_BOOLEAN:
+						value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE) ? (control.get(QSYSCoreConstant.CONTROL_VALUE).asBoolean() ? QSYSCoreConstant.TRUE : QSYSCoreConstant.FALSE) : QSYSCoreConstant.DEFAUL_DATA;
+						break;
+					default:
+						value = Optional.ofNullable(control.get(QSYSCoreConstant.CONTROL_VALUE_STRING)).map(JsonNode::asText).orElse(QSYSCoreConstant.DEFAUL_DATA);
+						break;
 				}
+
 				switch (metric){
+					case FULL_RANGE_HIGH_PILOT_TON:
+					case FULL_RANGE_LOW_PILOT_TON:
+						this.getStats().put(metric.getMetric(), value.equalsIgnoreCase(QSYSCoreConstant.FALSE) ? uppercaseFirstCharacter("disabled") : uppercaseFirstCharacter("enabled"));
+						break;
 					case MUTE:
 					case FULL_RANGE_MUTE:
-						int statusMute = value.equalsIgnoreCase("unmuted") ? 0 : 1;
+					case FULL_RANGE_INVERT:
+						int statusMute = value.equalsIgnoreCase(QSYSCoreConstant.FALSE) ? 0 : 1;
 						addAdvancedControlProperties(
 								this.getAdvancedControllableProperties(),
 								getStats(),
@@ -147,58 +127,49 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 								String.valueOf(statusMute)
 						);
 						break;
-					case FULL_RANGE_INVERT:
-						int status = value.equalsIgnoreCase(QSYSCoreConstant.NORMAL) ? 0 : 1;
-						addAdvancedControlProperties(
-								this.getAdvancedControllableProperties(),
-								getStats(),
-								createSwitch(metric.getMetric(), status, QSYSCoreConstant.OFF, QSYSCoreConstant.ON),
-								String.valueOf(status)
-						);
-						break;
 					case GAIN:
+						String gainValue = roundToDecimalPlaces(control.get(QSYSCoreConstant.CONTROL_VALUE), 0);
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
-								metric.getMetric(), "-100", "20", -100f, 20f, Float.parseFloat(value)), value);
-						this.getStats().put(QSYSCoreConstant.GAIN_CURRENT_VALUE, value);
+								metric.getMetric(), "-100", "20", -100f, 20f, Float.parseFloat(gainValue)), gainValue);
+						this.getStats().put(QSYSCoreConstant.GAIN_CURRENT_VALUE, gainValue);
 						break;
 					case FULL_RANGE_LIMITER:
-						this.getStats().put(
-								metric.getMetric(),
-								StringUtils.isNotNullOrEmpty(value)
-										? uppercaseFirstCharacter(value.equals("-0") ? QSYSCoreConstant.ZERO : value)
-										: QSYSCoreConstant.DEFAUL_DATA
-						);						break;
-					case DELAY:
-						String delayInMs = convertTimeToMs(value);
-						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
-								metric.getMetric(), "0", "2000", 0f, 2000f, Float.parseFloat(delayInMs)), delayInMs);
-						this.getStats().put("DelayCurrentValue(ms)", delayInMs);
-						break;
-					case FULL_RANGE_CURRENT:
-					case FULL_RANGE_POWER:
-					case FULL_RANGE_VOLTAGE:
-						if (StringUtils.isNotNullOrEmpty(value)) {
-							if (value.matches("^\\.\\d+$")) {
-								value = QSYSCoreConstant.ZERO + value;
-							}
-							this.getStats().put(metric.getMetric(), value);
+						JsonNode valueNode = control.get(QSYSCoreConstant.CONTROL_VALUE);
+						String formattedLimiterValue;
+						if (valueNode != null && valueNode.isNumber()) {
+							double rawValue = valueNode.asDouble();
+
+							formattedLimiterValue = Math.abs(rawValue) < 1e-5
+									? QSYSCoreConstant.ZERO
+									: String.format(Locale.US, "%.2f", rawValue);
 						} else {
-							this.getStats().put(metric.getMetric(), QSYSCoreConstant.DEFAUL_DATA);
+							formattedLimiterValue = QSYSCoreConstant.DEFAUL_DATA;
 						}
+
+						this.getStats().put(metric.getMetric(), formattedLimiterValue);
 						break;
-					case FULL_RANGE_HIGH_PASS_FREQ:
-						value = value.replaceAll(Pattern.quote("Hz") + "\\s*$", "");
+					case DELAY:
+						String delayMs = String.valueOf(Math.round(Float.parseFloat(value) * 1000));
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
-								metric.getMetric(), "30", "300", 30f, 300f, Float.parseFloat(value)), value);
-						this.getStats().put("Fullrange#HighPassFreqCurrentValue(Hz)", value);
+								metric.getMetric(), "0", "2000", 0f, 2000f, Float.parseFloat(delayMs)), delayMs);
+						this.getStats().put("DelayCurrentValue(ms)", delayMs);
 						break;
+					case FULL_RANGE_IMPEDANCE:
+					case FULL_RANGE_HIGH_PILOT_IMPEDANCE:
 					case FULL_RANGE_OPEN_THRESHOLD:
 					case FULL_RANGE_SHORT_THRESHOLD:
 					case FULL_RANGE_LOW_PILOT_IMPEDANCE:
-					case FULL_RANGE_HIGH_PILOT_IMPEDANCE:
-					case FULL_RANGE_IMPEDANCE:
-						String normalizedValue = normalizeNumericValue(value);
-						this.getStats().put(metric.getMetric(), normalizedValue);
+					case FULL_RANGE_CURRENT:
+					case FULL_RANGE_POWER:
+					case FULL_RANGE_VOLTAGE:
+						String rounded = roundToDecimalPlaces(control.get(QSYSCoreConstant.CONTROL_VALUE), 3);
+						this.getStats().put(metric.getMetric(), rounded);
+						break;
+					case FULL_RANGE_HIGH_PASS_FREQ:
+						String highPassValue = roundToDecimalPlaces(control.get(QSYSCoreConstant.CONTROL_VALUE), 0);
+						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
+								metric.getMetric(), "30", "300", 30f, 300f, Float.parseFloat(highPassValue)), highPassValue);
+						this.getStats().put("Fullrange#HighPassFreqCurrentValue(Hz)", highPassValue);
 						break;
 					case FULL_RANGE_OPEN:
 					case FULL_RANGE_SHORT:
@@ -224,18 +195,22 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 	}
 
 	/**
-	 * Normalizes a numeric string by extracting the leading numeric portion, if available.
-	 *   Returning the original string if it is a placeholder ("---") or starts with a '>' character,
-	 *   Otherwise, extracting and returning the leading decimal number (e.g., from "1.46cea9" → "1.46").
+	 * Rounds a numeric value from a {@link JsonNode} to a specified number of decimal places.
 	 *
-	 * @param value the raw string value to normalize
-	 * @return a cleaned numeric string or the original string if non-numeric conditions are met
+	 * @param valueNode      the JSON node containing the numeric value
+	 * @param decimalPlaces  the number of decimal places to round to
+	 * @return a string representation of the rounded number, or a default value if invalid
 	 */
-	private String normalizeNumericValue(String value) {
-		if (value.trim().equals("---") || value.startsWith(">")) {
-			return value;
+	private String roundToDecimalPlaces(JsonNode valueNode, int decimalPlaces) {
+		if (valueNode == null || !valueNode.isNumber()) {
+			return QSYSCoreConstant.DEFAUL_DATA;
 		}
-		Matcher matcher = Pattern.compile("^[0-9]+(\\.[0-9]+)?").matcher(value);
-		return matcher.find() ? matcher.group() : value;
+		double value = valueNode.asDouble();
+
+		if (Math.abs(value) < 1e-6) {
+			return QSYSCoreConstant.ZERO;
+		}
+		BigDecimal rounded = new BigDecimal(Double.toString(value)).setScale(decimalPlaces, RoundingMode.HALF_UP).stripTrailingZeros();
+		return rounded.toPlainString();
 	}
 }
