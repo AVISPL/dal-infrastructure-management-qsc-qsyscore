@@ -593,6 +593,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					aggregatedDevice.setDeviceName(name);
 					provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
 					aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
+					//Log for debug
+					logger.debug("Aggregated of QSC: " + aggregatedDevice);
 					resultAggregatedDeviceList.add(aggregatedDevice);
 				}
 			}

@@ -128,7 +128,7 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 						);
 						break;
 					case GAIN:
-						String gainValue = roundToDecimalPlaces(control.get(QSYSCoreConstant.CONTROL_VALUE), 0);
+						String gainValue = roundToDecimalPlaces(control.get(QSYSCoreConstant.CONTROL_VALUE), 1);
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metric.getMetric(), "-100", "20", -100f, 20f, Float.parseFloat(gainValue)), gainValue);
 						this.getStats().put(QSYSCoreConstant.GAIN_CURRENT_VALUE, gainValue);
@@ -149,7 +149,18 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 						this.getStats().put(metric.getMetric(), formattedLimiterValue);
 						break;
 					case DELAY:
-						String delayMs = String.valueOf(Math.round(Float.parseFloat(value) * 1000));
+						JsonNode delayNode = control.get(QSYSCoreConstant.CONTROL_VALUE);
+						String delayMs;
+						if (delayNode != null && delayNode.isNumber()) {
+							double valueSec = delayNode.asDouble();
+							double valueInMs = valueSec * 1000;
+							BigDecimal rounded = new BigDecimal(Double.toString(valueInMs))
+									.setScale(1, RoundingMode.HALF_UP)
+									.stripTrailingZeros();
+							delayMs = rounded.toPlainString();
+						} else {
+							delayMs = QSYSCoreConstant.NOT_AVAILABLE;
+						}
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metric.getMetric(), "0", "2000", 0f, 2000f, Float.parseFloat(delayMs)), delayMs);
 						this.getStats().put("DelayCurrentValue(ms)", delayMs);
@@ -162,11 +173,11 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 					case FULL_RANGE_CURRENT:
 					case FULL_RANGE_POWER:
 					case FULL_RANGE_VOLTAGE:
-						String rounded = roundToDecimalPlaces(control.get(QSYSCoreConstant.CONTROL_VALUE), 3);
+						String rounded = roundToDecimalPlaces(control.get(QSYSCoreConstant.CONTROL_VALUE), 1);
 						this.getStats().put(metric.getMetric(), rounded);
 						break;
 					case FULL_RANGE_HIGH_PASS_FREQ:
-						String highPassValue = roundToDecimalPlaces(control.get(QSYSCoreConstant.CONTROL_VALUE), 0);
+						String highPassValue = roundToDecimalPlaces(control.get(QSYSCoreConstant.CONTROL_VALUE), 1);
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metric.getMetric(), "30", "300", 30f, 300f, Float.parseFloat(highPassValue)), highPassValue);
 						this.getStats().put("Fullrange#HighPassFreqCurrentValue(Hz)", highPassValue);
