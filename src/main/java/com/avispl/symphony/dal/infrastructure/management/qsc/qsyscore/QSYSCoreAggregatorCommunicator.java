@@ -771,10 +771,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					if (QSYSCoreSystemMetric.UPTIME.getName().equals(propertiesName.getName())) {
 						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
 						continue;
-					} else if(QSYSCoreSystemMetric.DEVICE_NAME.getName().equals(propertiesName.getName())){
-//						aggregatorDeviceName = deviceInfo.getValueByMetricName(propertiesName);
-						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
-						continue;
 					}
 					stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(deviceInfo.getValueByMetricName(propertiesName)));
 				}

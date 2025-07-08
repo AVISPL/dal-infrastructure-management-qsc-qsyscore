@@ -137,6 +137,9 @@ public class QSYSCoreConstant {
 	public static final String CONTROLS = "Controls";
 	public static final String CONTROL_NAME = "Name";
 	public static final String CONTROL_VALUE_STRING = "String";
+	public static final String CONTROL_TYPE = "Type";
+	public static final String TYPE_FLOAT = "Float";
+	public static final String TYPE_BOOLEAN = "Boolean";
 
 	// Device Type
 	public static final String PROCESSOR_TYPE = "Processor";
@@ -151,7 +154,7 @@ public class QSYSCoreConstant {
 	public static final String AMPLIFIER_TYPE = "Amplifier";
 	public static final String STATUS_AMPLIFIER_TYPE = "Status Amplifier";
 	public static final String RECEIVER_TYPE = "Receiver";
-	public static final String LOUDSPEAKER_TYPE = "LoudSpeaker";
+	public static final String LOUDSPEAKER_TYPE = "Loudspeaker";
 
 	//Date time
 	public static final String DAYS = "day(s)";
