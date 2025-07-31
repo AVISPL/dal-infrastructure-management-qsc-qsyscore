@@ -5,12 +5,19 @@
 package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.device;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
+import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty.DropDown;
+import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty.Slider;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.DeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
+import com.avispl.symphony.dal.util.StringUtils;
 
 /**
  * DeviceInfo
@@ -148,4 +155,118 @@ public abstract class QSYSPeripheralDevice implements DeviceBehavior {
 		}
 
 	}
+
+	/**
+	 * capitalize the first character of the string
+	 *
+	 * @param input input string
+	 * @return string after fix
+	 */
+	public String uppercaseFirstCharacter(String input) {
+		char firstChar = input.charAt(0);
+		return Character.toUpperCase(firstChar) + input.substring(1);
+	}
+
+	/**
+	 * Add addAdvancedControlProperties if advancedControllableProperties different empty
+	 *
+	 * @param advancedControllableProperties advancedControllableProperties is the list that store all controllable properties
+	 * @param stats store all statistics
+	 * @param property the property is item advancedControllableProperties
+	 * @throws IllegalStateException when exception occur
+	 */
+	public void addAdvancedControlProperties(List<AdvancedControllableProperty> advancedControllableProperties, Map<String, String> stats, AdvancedControllableProperty property, String value) {
+		if (property != null) {
+			advancedControllableProperties.removeIf(controllableProperty -> controllableProperty.getName().equals(property.getName()));
+
+			String propertyValue = StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.EMPTY;
+			stats.put(property.getName(), propertyValue);
+
+			advancedControllableProperties.add(property);
+		}
+	}
+
+	/**
+	 * Create switch is control property for metric
+	 *
+	 * @param name the name of property
+	 * @param status initial status (0|1)
+	 * @return AdvancedControllableProperty switch instance
+	 */
+	public AdvancedControllableProperty createSwitch(String name, int status, String labelOff, String labelOn) {
+		AdvancedControllableProperty.Switch toggle = new AdvancedControllableProperty.Switch();
+		toggle.setLabelOff(labelOff);
+		toggle.setLabelOn(labelOn);
+
+		AdvancedControllableProperty advancedControllableProperty = new AdvancedControllableProperty();
+		advancedControllableProperty.setName(name);
+		advancedControllableProperty.setValue(status);
+		advancedControllableProperty.setType(toggle);
+		advancedControllableProperty.setTimestamp(new Date());
+
+		return advancedControllableProperty;
+	}
+
+	/**
+	 * Create dropdown advanced controllable property
+	 *
+	 * @param name the name of the control
+	 * @param initialValue initial value of the control
+	 * @return AdvancedControllableProperty dropdown instance
+	 */
+	public AdvancedControllableProperty createDropdown(String name, String[] values, String initialValue) {
+		DropDown dropDown = new DropDown();
+		dropDown.setOptions(values);
+		dropDown.setLabels(values);
+
+		return new AdvancedControllableProperty(name, new Date(), dropDown, initialValue);
+	}
+
+	/**
+	 * Create AdvancedControllableProperty slider instance
+	 *
+	 * @param stats extended statistics
+	 * @param name name of the control
+	 * @param initialValue initial value of the control
+	 * @return AdvancedControllableProperty slider instance
+	 */
+	public AdvancedControllableProperty createSlider(Map<String, String> stats, String name, String labelStart, String labelEnd, Float rangeStart, Float rangeEnd, Float initialValue) {
+		stats.put(name, initialValue.toString());
+		Slider slider = new Slider();
+		slider.setLabelStart(labelStart);
+		slider.setLabelEnd(labelEnd);
+		slider.setRangeStart(rangeStart);
+		slider.setRangeEnd(rangeEnd);
+
+		return new AdvancedControllableProperty(name, new Date(), slider, initialValue);
+	}
+
+	/**
+	 * Formats the given metric name by inserting "CurrentValue" before the first opening parenthesis.
+	 * @param metricName The original metric name.
+	 * @return The formatted metric name with "CurrentValue" added before the first parenthesis.
+	 */
+	public String getFormattedMetricNameSlider(String metricName){
+		metricName = metricName.replaceFirst("\\(", "CurrentValue(");
+		return metricName;
+	}
+
+	/**
+	 * Formats the metric name based on the given control data.
+	 *
+	 * @param metric containing the metric and property information.
+	 * @param control containing the control name used for formatting.
+	 * @return the formatted metric name.
+	 */
+	public String getFormattedMetricName(DeviceMetric metric, JsonNode control) {
+		String[] splitProperty = metric.getProperty().split(QSYSCoreConstant.FORMAT_STRING);
+		if (splitProperty.length > 1) {
+			return String.format(metric.getMetric(),
+					control.get(QSYSCoreConstant.CONTROL_NAME).asText()
+							.replace(splitProperty[0], QSYSCoreConstant.EMPTY)
+							.replace(splitProperty[1], QSYSCoreConstant.EMPTY));
+		}
+		return metric.getMetric();
+	}
+
 }

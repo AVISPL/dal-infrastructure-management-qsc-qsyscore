@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 
 import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
@@ -20,6 +21,7 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.QSYSCoreAggregatorCommunicator;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.GainControllingMetric;
+import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.PluginDeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.QSYSCoreConstant;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common.VideoIODeviceMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreDesignMetric;
@@ -34,11 +36,12 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCo
  * @since 1.0.0
  */
 public class TestQSYSCoreAggregatorCommunicator {
-	public QSYSCoreAggregatorCommunicator qSYSCoreCommunicator = new QSYSCoreAggregatorCommunicator();
+	private QSYSCoreAggregatorCommunicator qSYSCoreCommunicator;
 
 	@BeforeEach()
 	public void setUp() throws Exception {
-		qSYSCoreCommunicator.setHost("***REMOVED***");
+		qSYSCoreCommunicator = new QSYSCoreAggregatorCommunicator();
+		qSYSCoreCommunicator.setHost("");
 		qSYSCoreCommunicator.setLogin("");
 		qSYSCoreCommunicator.setPassword("");
 		qSYSCoreCommunicator.setPort(443);
@@ -62,6 +65,7 @@ public class TestQSYSCoreAggregatorCommunicator {
 	void testGetMultipleStatisticsWithSystemInfo() throws Exception {
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistics.getStatistics();
+		Assertions.assertEquals("70/100V_Speaker_Speaker-1", stats.get(QSYSCoreSystemMetric.DEVICE_ID.getName()));
 		Assertions.assertEquals("3-440F59FA6034C59670FF3C0928929607", stats.get(QSYSCoreSystemMetric.DEVICE_ID.getName()));
 		Assertions.assertEquals("3-440F59FA6034C59670FF3C0928929607", stats.get(QSYSCoreSystemMetric.SERIAL_NUMBER.getName()));
 		Assertions.assertEquals("Core 110f", stats.get(QSYSCoreSystemMetric.DEVICE_MODEL.getName()));
@@ -380,7 +384,20 @@ public class TestQSYSCoreAggregatorCommunicator {
 		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
 		Thread.sleep(30000);
 		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
-		Assert.assertEquals(16, aggregatedDeviceList.size());
+		System.out.println(aggregatedDeviceList);
+		Assert.assertEquals(39, aggregatedDeviceList.size());
+	}
+
+	@Test
+	void TestAggregatedDeviceHasNameIsTransmitter() throws Exception {
+		qSYSCoreCommunicator.setFilterDeviceByName("AES67_Transmitter_AES67-TX-1");
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(30000);
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		Thread.sleep(30000);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Assert.assertEquals(1, aggregatedDeviceList.size());
 	}
 
 	/**
@@ -448,7 +465,8 @@ public class TestQSYSCoreAggregatorCommunicator {
 		qSYSCoreCommunicator.getMultipleStatistics().get(0);
 		Thread.sleep(30000);
 		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
-		AggregatedDevice aggregatedDevice = aggregatedDeviceList.stream().filter(item -> item.getDeviceName().equals("Status_CeeSalt-Core110f")).findFirst().orElse(new AggregatedDevice());
+		AggregatedDevice aggregatedDevice = aggregatedDeviceList.stream().filter(item -> item.getDeviceName().equals("Status_Core-1")).findFirst().orElse(new AggregatedDevice());
+		System.out.println(aggregatedDevice.getDynamicStatistics());
 		Assert.assertNotNull(aggregatedDevice.getDynamicStatistics().get("ProcessorTemperature(C)"));
 	}
 
@@ -509,4 +527,49 @@ public class TestQSYSCoreAggregatorCommunicator {
 			}
 		}
 	}
+
+	/**
+	 * Test filter by plugin device
+	 *
+	 * Expect aggregated device with filter successfully
+	 */
+	@Test
+	void TestFilterByPluginDevice() throws Exception {
+		qSYSCoreCommunicator.setFilterPluginByName("VNOC Netgear");
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(30000);
+		qSYSCoreCommunicator.getMultipleStatistics();
+		Thread.sleep(30000);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Optional<AggregatedDevice> netgearDevice = aggregatedDeviceList.stream().filter(device -> device.getDeviceId().contains("VNOC Netgear")).findFirst();
+		for (PluginDeviceMetric device : PluginDeviceMetric.values()) {
+			{
+				Assertions.assertNotNull(netgearDevice.get().getProperties().get(device.getMetric()));
+			}
+		}
+	}
+
+	@Test
+	void testControllableTransmitter() throws Exception {
+		qSYSCoreCommunicator.getMultipleStatistics();
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		Thread.sleep(20000);
+
+		ControllableProperty controllableProperty = new ControllableProperty();
+
+		String property = "Channel1#Invert";
+//		String deviceId = "Amp_Output_Amplifier-1_CX-Q_2K4";
+ 		String deviceId = "AES67_Receiver_AES67-RX-1";
+//		String deviceId = "Generic_Speaker_Speaker-2";
+		String value = "0";
+		controllableProperty.setProperty(property);
+		controllableProperty.setValue(value);
+		controllableProperty.setDeviceId(deviceId);
+		qSYSCoreCommunicator.retrieveMultipleStatistics();
+		qSYSCoreCommunicator.controlProperty(controllableProperty);
+		ExtendedStatistics extendedStatistics = (ExtendedStatistics) qSYSCoreCommunicator.getMultipleStatistics().get(0);
+		List<AggregatedDevice> aggregatedDeviceList = qSYSCoreCommunicator.retrieveMultipleStatistics();
+	}
+
 }

@@ -28,7 +28,7 @@ public class DeviceInfoData {
 	private String access;
 	private boolean engineOnline;
 	private long engineUptime;
-	private String redundancy = null;
+	private Redundancy redundancy;
 	private Status status;
 	private boolean isComplete;
 	private String serialNo;
@@ -290,7 +290,7 @@ public class DeviceInfoData {
 	 *
 	 * @return value of {@link #redundancy}
 	 */
-	public String getRedundancy() {
+	public Redundancy getRedundancy() {
 		return redundancy;
 	}
 
@@ -299,7 +299,7 @@ public class DeviceInfoData {
 	 *
 	 * @param redundancy new value of {@link #redundancy}
 	 */
-	public void setRedundancy(String redundancy) {
+	public void setRedundancy(Redundancy redundancy) {
 		this.redundancy = redundancy;
 	}
 

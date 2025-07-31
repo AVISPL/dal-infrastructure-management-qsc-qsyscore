@@ -20,8 +20,12 @@ import com.avispl.symphony.dal.util.StringUtils;
  */
 public class MonitoringProxyDevice extends QSYSPeripheralDevice {
 
+	/**
+	 * Manage are control of device
+	 *
+	 */
 	@Override
-	public void controlDevice(JsonNode response) {
+	public void controlDevice(QSYSPeripheralDevice device, String property, String value, String metricName) {
 
 	}
 
