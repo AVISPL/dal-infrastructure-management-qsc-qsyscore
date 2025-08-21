@@ -187,7 +187,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * Store the device name
 	 */
-//	private String aggregatorDeviceName;
+	private String aggregatorDeviceName;
 
 	/**
 	 * Map save all device
@@ -482,7 +482,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			}
 			String propertyControl = controllableProperty.getProperty();
 			String value = String.valueOf(controllableProperty.getValue());
-			String deviceId = controllableProperty.getDeviceId();
+			String deviceId = removeAggregatorPrefix(controllableProperty.getDeviceId());
 			if (this.logger.isDebugEnabled()) {
 				this.logger.debug("controlProperty property " + propertyControl);
 				this.logger.debug("controlProperty value " + value);
@@ -572,7 +572,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				if ((StringUtils.isNullOrEmpty(filterDeviceByQSYSType) || filterDeviceByQSYSTypeSet.contains(device.getValue().getType())) && (StringUtils.isNullOrEmpty(filterDeviceByName)
 						|| filterDeviceByNameSet.contains(device.getKey()))) {
 					AggregatedDevice aggregatedDevice = new AggregatedDevice();
-					aggregatedDevice.setDeviceId(device.getKey());
+					aggregatedDevice.setDeviceId(withAggregatorPrefix(device.getKey()));
 					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
 					if(deviceStatus != null){
 					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.LIST_ONLINE_STATUS.stream()
@@ -590,7 +590,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					} else {
 						aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
 					}
-					aggregatedDevice.setDeviceName(name);
+					aggregatedDevice.setDeviceName(withAggregatorPrefix(name));
 					provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
 					aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
 					resultAggregatedDeviceList.add(aggregatedDevice);
@@ -605,7 +605,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	@Override
 	public List<AggregatedDevice> retrieveMultipleStatistics(List<String> listDeviceId) throws Exception {
-		return retrieveMultipleStatistics().stream().filter(aggregatedDevice -> listDeviceId.contains(aggregatedDevice.getDeviceId())).collect(Collectors.toList());
+		return retrieveMultipleStatistics().stream().filter(aggregatedDevice -> listDeviceId.contains(withAggregatorPrefix(aggregatedDevice.getDeviceId()))).collect(Collectors.toList());
 	}
 
 	/**
@@ -770,6 +770,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
 					if (QSYSCoreSystemMetric.UPTIME.getName().equals(propertiesName.getName())) {
 						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
+						continue;
+					} else if (QSYSCoreSystemMetric.DEVICE_NAME.getName().equals(propertiesName.getName())) {
+						aggregatorDeviceName = deviceInfo.getValueByMetricName(propertiesName);
+						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(deviceInfo.getValueByMetricName(propertiesName)));
 						continue;
 					}
 					stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(deviceInfo.getValueByMetricName(propertiesName)));
@@ -1280,6 +1284,29 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private String getDefaultValueForNullData(String value) {
 		return StringUtils.isNotNullOrEmpty(value) && !QSYSCoreConstant.NULL.equalsIgnoreCase(value) ? uppercaseFirstCharacter(value) : QSYSCoreConstant.NONE_VALUE;
+	}
+
+	/**
+	 * Adds the aggregator device name as a prefix to the given device ID.
+	 *
+	 * @param deviceId the original device identifier (without prefix)
+	 * @return the device ID with the aggregator prefix applied
+	 */
+	private String withAggregatorPrefix(String deviceId) {
+		return aggregatorDeviceName + "_" + deviceId;
+	}
+
+	/**
+	 * Removes the aggregator device name prefix from the given device ID if present.
+	 *
+	 * @param prefixedId the device ID with aggregator prefix
+	 * @return the original device ID without the aggregator prefix, or the input value if no prefix is found
+	 */
+	private String removeAggregatorPrefix(String prefixedId) {
+		if (prefixedId != null && prefixedId.startsWith(aggregatorDeviceName + "_")) {
+			return prefixedId.substring((aggregatorDeviceName + "_").length());
+		}
+		return prefixedId;
 	}
 
 	/**
