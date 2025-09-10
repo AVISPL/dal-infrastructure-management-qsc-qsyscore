@@ -532,7 +532,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				populateQSYSAggregatorMonitoringData(stats);
 				populateQSYSComponent(stats, controllableProperties);
 				retrieveMetadata(stats);
-				reconcileCacheWithDeviceMap();
+				reconcileCacheWithDeviceMap(stats);
 
 				int currentSizeDeviceMap = deviceMap.isEmpty()
 						? mapOfIdAndAggregatedDeviceList.size()
@@ -599,10 +599,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			String propertyControl = controllableProperty.getProperty();
 			String value = String.valueOf(controllableProperty.getValue());
 			String deviceId = removeAggregatorPrefix(controllableProperty.getDeviceId());
-			if (this.logger.isDebugEnabled()) {
-				this.logger.debug("controlProperty property " + propertyControl);
-				this.logger.debug("controlProperty value " + value);
-			}
 
 			if (propertyControl == null) {
 				throw new IllegalArgumentException("PropertyControl must not be null");
@@ -683,6 +679,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			return Collections.emptyList();
 		}
 		refreshTimestamps();
+
+		if (!deviceMap.isEmpty()) {
+			retrieveAggregatedDeviceByIdList(new ArrayList<>(deviceMap.keySet()));
+		}
 		Map<String, QSYSPeripheralDevice> snapshot = snapshotDevices();
 		resultAggregatedDeviceList.clear();
 		for (Map.Entry<String, QSYSPeripheralDevice> entry : snapshot.entrySet()) {
@@ -955,7 +955,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					.findFirst();
 
 			if (validResponse.isPresent()) {
-				DesignInfo designInfo = objectMapper.readValue(response.get(1), DesignInfo.class);
+				DesignInfo designInfo = objectMapper.readValue(validResponse.get(), DesignInfo.class);
 				if (designInfo != null && designInfo.getResult() != null) {
 					for (QSYSCoreDesignMetric qsysCoreDesignMetric : QSYSCoreDesignMetric.values()) {
 						stats.put(qsysCoreDesignMetric.getName(), designInfo.getValueByMetricName(qsysCoreDesignMetric));
@@ -965,7 +965,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				response.stream()
 						.filter(res -> res.contains(QSYSCoreConstant.CMD_ERROR))
 						.findFirst()
-						.ifPresent(err -> logger.warn("Have error response for STATUS_GET: " + err));
+						.ifPresent(err -> logger.warn("STATUS_GET request resulted in an error for aggregator " + aggregatorDeviceName + ": " + err));
 			}
 		} catch (Exception e) {
 			for (QSYSCoreDesignMetric qsysCoreDesignMetric : QSYSCoreDesignMetric.values()) {
@@ -1019,7 +1019,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 							retrieveGainComponent(stats, controllableProperties, componentInfo.getId());
 							continue;
 						}
-						if (localPollingInterval == 0 && componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType()) || componentInfo.getType()
+						if (componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType()) || componentInfo.getType()
 								.contains(QSYSCoreConstant.PLUGIN)) {
 							retrieveDevice(existDeviceSet, componentInfo);
 						} else {
@@ -1047,12 +1047,15 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * Call after updating {@code deviceMap} and before rendering statistics.
 	 * Mutates shared state
 	 */
-	private void reconcileCacheWithDeviceMap() {
+	private void reconcileCacheWithDeviceMap(Map<String, String> stats) {
 		for (String id : deviceMap.keySet()) {
 			QSYSPeripheralDevice dev = deviceMap.get(id);
 			if (dev != null) {
 				mapOfIdAndAggregatedDeviceList.putIfAbsent(id, dev);
 			}
+		}
+		if("Standby".equals(stats.get("State"))){
+			mapOfIdAndAggregatedDeviceList.keySet().retainAll(deviceMap.keySet());
 		}
 	}
 
