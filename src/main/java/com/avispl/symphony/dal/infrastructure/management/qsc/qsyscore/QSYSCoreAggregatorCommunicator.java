@@ -228,6 +228,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	private ExtendedStatistics localExtStats;
 
 	/**
+	 * Enable/disable controllable properties on aggregated devices
+	 * */
+	private boolean configManagement = false;
+	/**
 	 * Filter by plugin name
 	 */
 	private String filterPluginByName;
@@ -347,6 +351,24 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		adapterProperties = new Properties();
 		adapterProperties.load(getClass().getResourceAsStream("/version.properties"));
 		this.setTrustAllCertificates(true);
+	}
+
+	/**
+	 * Retrieves {@link #configManagement}
+	 *
+	 * @return value of {@link #configManagement}
+	 */
+	public boolean isConfigManagement() {
+		return configManagement;
+	}
+
+	/**
+	 * Sets {@link #configManagement} value
+	 *
+	 * @param configManagement new value of {@link #configManagement}
+	 */
+	public void setConfigManagement(boolean configManagement) {
+		this.configManagement = configManagement;
 	}
 
 	/**
@@ -688,6 +710,15 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		for (Map.Entry<String, QSYSPeripheralDevice> entry : snapshot.entrySet()) {
 			AggregatedDevice aggregatedDevice = buildAggregatedDevice(entry.getKey(), entry.getValue());
 			if (aggregatedDevice != null) {
+				if (!configManagement) {
+					if (logger.isDebugEnabled()) {
+						logger.debug(String.format("configManagement is set to false, removing device %s controllable properties.", aggregatedDevice.getDeviceId()));
+					}
+					// Since SY core caches controllable properties, we need to create a dummy object to replace existing controls with
+					List<AdvancedControllableProperty> controls = aggregatedDevice.getControllableProperties();
+					controls.clear();
+					controls.add(ControllablePropertyFactory.createText(QSYSCoreConstant.EMPTY,QSYSCoreConstant.EMPTY));
+				}
 				resultAggregatedDeviceList.add(aggregatedDevice);
 			}
 		}
