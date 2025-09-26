@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -68,57 +69,9 @@ import com.avispl.symphony.dal.util.StringUtils;
  */
 public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements Aggregator, Monitorable, Controller {
 
-	/**
-	 * Indicates whether a device is considered as paused.
-	 * True by default so if the system is rebooted and the actual value is lost -> the device won't start stats
-	 * collection unless the {@link QSYSCoreAggregatorCommunicator#retrieveMultipleStatistics()} method is called which will change it
-	 * to a correct value
-	 */
-	private volatile boolean devicePaused = true;
-
-	/**
-	 * We don't want the statistics to be collected constantly, because if there's not a big list of devices -
-	 * new devices' statistics loop will be launched before the next monitoring iteration. To avoid that -
-	 * this variable stores a timestamp which validates it, so when the devices' statistics is done collecting, variable
-	 * is set to currentTime + 30s, at the same time, calling {@link #retrieveMultipleStatistics()} and updating the
-	 */
-	private long nextDevicesCollectionIterationTimestamp;
-
-	/**
-	 * This parameter holds timestamp of when we need to stop performing API calls
-	 * It used when device stop retrieving statistic. Updated each time of called #retrieveMultipleStatistics
-	 */
-
-	private volatile long validRetrieveStatisticsTimestamp;
-
-	/**
-	 * Aggregator inactivity timeout. If the {@link QSYSCoreAggregatorCommunicator#retrieveMultipleStatistics()}  method is not
-	 * called during this period of time - device is considered to be paused, thus the Cloud API
-	 * is not supposed to be called
-	 */
-	private static final long retrieveStatisticsTimeOut = 3 * 60 * 1000;
-
-	/**
-	 * Update the status of the device.
-	 * The device is considered as paused if did not receive any retrieveMultipleStatistics()
-	 * calls during {@link QSYSCoreAggregatorCommunicator}
-	 */
-	private synchronized void updateAggregatorStatus() {
-		devicePaused = validRetrieveStatisticsTimestamp < System.currentTimeMillis();
-	}
-
-	/**
-	 * Uptime time stamp to valid one
-	 */
-	private synchronized void updateValidRetrieveStatisticsTimestamp() {
-		validRetrieveStatisticsTimestamp = System.currentTimeMillis() + retrieveStatisticsTimeOut;
-		updateAggregatorStatus();
-	}
-
 	class DeviceLoader implements Runnable {
 		private volatile List<String> deviceIds;
-		private volatile boolean inProgress;
-		private volatile boolean dataFetchCompleted = false;
+
 		/**
 		 * Parameters constructors
 		 *
@@ -126,65 +79,14 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		 */
 		public DeviceLoader(List<String> deviceIds) {
 			this.deviceIds = deviceIds;
-			inProgress = true;
 		}
 
 		@Override
 		public void run() {
-			loop:
-			while (inProgress) {
-				try {
-					try {
-						TimeUnit.MILLISECONDS.sleep(500);
-					} catch (InterruptedException e) {
-						logger.info(String.format("Sleep for 0.5 second was interrupted with error message: %s", e.getMessage()));
-					}
 
-					if (!inProgress) {
-						break loop;
-					}
-
-					// next line will determine whether QSYS monitoring was paused
-					updateAggregatorStatus();
-					if (devicePaused) {
-						continue loop;
-					}
-					if (logger.isDebugEnabled()) {
-						logger.debug("Fetching other than aggregated device list");
-					}
-
-					long currentTimestamp = System.currentTimeMillis();
-					if (!dataFetchCompleted && nextDevicesCollectionIterationTimestamp <= currentTimestamp) {
-						if (!deviceMap.isEmpty()) {
-							retrieveAggregatedDeviceByIdList(this.deviceIds);
-						}
-						dataFetchCompleted = true;
-					}
-
-					while (nextDevicesCollectionIterationTimestamp > System.currentTimeMillis()) {
-						try {
-							TimeUnit.MILLISECONDS.sleep(1000);
-						} catch (InterruptedException e) {
-							logger.info(String.format("Sleep for 1 second was interrupted with error message: %s", e.getMessage()));
-						}
-					}
-
-					if (!inProgress) {
-						break loop;
-					}
-					if (dataFetchCompleted) {
-						nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + 30000;
-						dataFetchCompleted = false;
-					}
-
-					if (logger.isDebugEnabled()) {
-						logger.debug("Finished collecting devices statistics cycle at " + new Date());
-					}
-				} catch (Exception e) {
-					logger.error("Unexpected error occurred during main device collection cycle", e);
-				}
+			if (!deviceMap.isEmpty()) {
+				retrieveAggregatedDeviceByIdList(this.deviceIds);
 			}
-			logger.debug("Main device collection loop is completed, in progress marker: " + inProgress);
 		}
 	}
 
@@ -285,7 +187,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * Store the device name
 	 */
-	private String aggregatorDeviceName;
+//	private String aggregatorDeviceName;
 
 	/**
 	 * Map save all device
@@ -296,18 +198,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * Map of ID device and device detail
 	 */
 	public Map<String, QSYSPeripheralDevice> mapOfIdAndAggregatedDeviceList = Collections.synchronizedMap(new HashMap<>());
-
-	/**
-	 * Snapshot of candidates used by the round-robin selector.
-	 * Replaced as a whole when refreshed; do not mutate in place.
-	 */
-	private List<String> rrSnapshot = new ArrayList<>();
-
-	/**
-	 * Next position in {@code rrSnapshot} for round-robin selection.
-	 * Increments on each pick and wraps back to 0 at the end.
-	 */
-	private int rrIndex = 0;
 
 	/**
 	 * Pool for keeping all the async operations in, to track any operations in progress and cancel them if needed
@@ -532,11 +422,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				populateQSYSAggregatorMonitoringData(stats);
 				populateQSYSComponent(stats, controllableProperties);
 				retrieveMetadata(stats);
-				reconcileCacheWithDeviceMap(stats);
 
-				int currentSizeDeviceMap = deviceMap.isEmpty()
-						? mapOfIdAndAggregatedDeviceList.size()
-						: deviceMap.size();
+				int currentSizeDeviceMap = deviceMap.size();
 				stats.put(QSYSCoreConstant.NUMBER_OF_DEVICE, String.valueOf(currentSizeDeviceMap));
 
 				if (localPollingInterval == 0) {
@@ -555,9 +442,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 							deviceIdDequeue.addLast(deviceId);
 						}
 					}
-				} else {
-					int batchSize = QSYSCoreConstant.MAX_DEVICE_QUANTITY_PER_THREAD;
-					refillQueueRoundRobin(batchSize);
 				}
 				populateAggregatedMonitoringData(currentSizeDeviceMap);
 				extendedStatistics.setStatistics(stats);
@@ -598,7 +482,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			}
 			String propertyControl = controllableProperty.getProperty();
 			String value = String.valueOf(controllableProperty.getValue());
-			String deviceId = removeAggregatorPrefix(controllableProperty.getDeviceId());
+			String deviceId = controllableProperty.getDeviceId();
+			if (this.logger.isDebugEnabled()) {
+				this.logger.debug("controlProperty property " + propertyControl);
+				this.logger.debug("controlProperty value " + value);
+			}
 
 			if (propertyControl == null) {
 				throw new IllegalArgumentException("PropertyControl must not be null");
@@ -678,17 +566,35 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		if (mapOfIdAndAggregatedDeviceList.isEmpty()) {
 			return Collections.emptyList();
 		}
-		refreshTimestamps();
-
-		if (!deviceMap.isEmpty()) {
-			retrieveAggregatedDeviceByIdList(new ArrayList<>(deviceMap.keySet()));
-		}
-		Map<String, QSYSPeripheralDevice> snapshot = snapshotDevices();
 		resultAggregatedDeviceList.clear();
-		for (Map.Entry<String, QSYSPeripheralDevice> entry : snapshot.entrySet()) {
-			AggregatedDevice aggregatedDevice = buildAggregatedDevice(entry.getKey(), entry.getValue());
-			if (aggregatedDevice != null) {
-				resultAggregatedDeviceList.add(aggregatedDevice);
+		synchronized (mapOfIdAndAggregatedDeviceList) {
+			for (Entry<String, QSYSPeripheralDevice> device : mapOfIdAndAggregatedDeviceList.entrySet()) {
+				if ((StringUtils.isNullOrEmpty(filterDeviceByQSYSType) || filterDeviceByQSYSTypeSet.contains(device.getValue().getType())) && (StringUtils.isNullOrEmpty(filterDeviceByName)
+						|| filterDeviceByNameSet.contains(device.getKey()))) {
+					AggregatedDevice aggregatedDevice = new AggregatedDevice();
+					aggregatedDevice.setDeviceId(device.getKey());
+					String deviceStatus = device.getValue().getStats().get(QSYSCoreConstant.STATUS);
+					if(deviceStatus != null){
+					aggregatedDevice.setDeviceOnline(QSYSCoreConstant.LIST_ONLINE_STATUS.stream()
+							.anyMatch(status -> status.equalsIgnoreCase(deviceStatus.trim())));
+					}
+					aggregatedDevice.setProperties(device.getValue().getStats());
+					String name = device.getKey();
+					if (QSYSCoreConstant.EXTERNAL.equals(device.getValue().getType())) {
+						String deviceName = device.getValue().getStats().get(PluginDeviceMetric.DEVICE_NAME.getMetric());
+						if (StringUtils.isNotNullOrEmpty(deviceName) && !QSYSCoreConstant.DEFAUL_DATA.equalsIgnoreCase(deviceName)) {
+							name = deviceName;
+						}
+						aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, QSYSCoreConstant.EXTERNAL);
+						device.getValue().getStats().remove(PluginDeviceMetric.DEVICE_NAME.getMetric());
+					} else {
+						aggregatedDevice.getProperties().put(QSYSCoreConstant.QSYS_TYPE, getTypeByResponseType(device.getValue().getType()));
+					}
+					aggregatedDevice.setDeviceName(name);
+					provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
+					aggregatedDevice.setControllableProperties(device.getValue().getAdvancedControllableProperties());
+					resultAggregatedDeviceList.add(aggregatedDevice);
+				}
 			}
 		}
 		return resultAggregatedDeviceList;
@@ -699,7 +605,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	@Override
 	public List<AggregatedDevice> retrieveMultipleStatistics(List<String> listDeviceId) throws Exception {
-		return retrieveMultipleStatistics().stream().filter(aggregatedDevice -> listDeviceId.contains(withAggregatorPrefix(aggregatedDevice.getDeviceId()))).collect(Collectors.toList());
+		return retrieveMultipleStatistics().stream().filter(aggregatedDevice -> listDeviceId.contains(aggregatedDevice.getDeviceId())).collect(Collectors.toList());
 	}
 
 	/**
@@ -766,7 +672,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 		mapOfIdAndAggregatedDeviceList.clear();
 		deviceIdDequeue = new ArrayDeque<>();
-		nextDevicesCollectionIterationTimestamp = 0;
 		resultAggregatedDeviceList.clear();
 		deviceMap.clear();
 		loginInfo = null;
@@ -866,10 +771,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					if (QSYSCoreSystemMetric.UPTIME.getName().equals(propertiesName.getName())) {
 						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(convertMillisecondsToDate(deviceInfo.getValueByMetricName(propertiesName))));
 						continue;
-					} else if (QSYSCoreSystemMetric.DEVICE_NAME.getName().equals(propertiesName.getName())) {
-						aggregatorDeviceName = deviceInfo.getValueByMetricName(propertiesName);
-						stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(deviceInfo.getValueByMetricName(propertiesName)));
-						continue;
 					}
 					stats.put(propertiesName.getName(), getDataOrDefaultDataIfNull(deviceInfo.getValueByMetricName(propertiesName)));
 				}
@@ -949,23 +850,13 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			RpcMethod method = RpcMethod.STATUS_GET;
 			String request = String.format(RpcMethod.getRequest(), method.getName(), RpcMethod.getParamsString(method));
 			List<String> response = Arrays.asList(qrcCommunicator.send(request));
-
-			Optional<String> validResponse = response.stream()
-					.filter(res -> res.contains(QSYSCoreConstant.CMD_RESULT) && !res.contains(QSYSCoreConstant.CMD_METHOD))
-					.findFirst();
-
-			if (validResponse.isPresent()) {
-				DesignInfo designInfo = objectMapper.readValue(validResponse.get(), DesignInfo.class);
+			if (response.size() > 1) {
+				DesignInfo designInfo = objectMapper.readValue(response.get(1), DesignInfo.class);
 				if (designInfo != null && designInfo.getResult() != null) {
 					for (QSYSCoreDesignMetric qsysCoreDesignMetric : QSYSCoreDesignMetric.values()) {
 						stats.put(qsysCoreDesignMetric.getName(), designInfo.getValueByMetricName(qsysCoreDesignMetric));
 					}
 				}
-			} else {
-				response.stream()
-						.filter(res -> res.contains(QSYSCoreConstant.CMD_ERROR))
-						.findFirst()
-						.ifPresent(err -> logger.warn("STATUS_GET request resulted in an error for aggregator " + aggregatorDeviceName + ": " + err));
 			}
 		} catch (Exception e) {
 			for (QSYSCoreDesignMetric qsysCoreDesignMetric : QSYSCoreDesignMetric.values()) {
@@ -1019,16 +910,25 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 							retrieveGainComponent(stats, controllableProperties, componentInfo.getId());
 							continue;
 						}
-						if (componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType()) || componentInfo.getType()
+						if (localPollingInterval == 0 && componentInfo.getType() != null && QSYSCoreConstant.SUPPORTED_DEVICE_TYPE.contains(componentInfo.getType()) || componentInfo.getType()
 								.contains(QSYSCoreConstant.PLUGIN)) {
 							retrieveDevice(existDeviceSet, componentInfo);
-						} else {
-							existDeviceSet.add(componentInfo.getId());
 						}
 					}
+
 					//Remove device does not exist
-					deviceMap.keySet().retainAll(existDeviceSet);
-					mapOfIdAndAggregatedDeviceList.keySet().retainAll(deviceMap.keySet());
+					if (localPollingInterval == 0) {
+						Iterator<String> iterator = deviceMap.keySet().iterator();
+						while (iterator.hasNext()) {
+							String deviceId = iterator.next();
+							if (!existDeviceSet.contains(deviceId)) {
+								iterator.remove();
+								if (mapOfIdAndAggregatedDeviceList.containsKey(deviceId)) {
+									mapOfIdAndAggregatedDeviceList.remove(deviceId);
+								}
+							}
+						}
+					}
 				}
 			} else {
 				response.stream()
@@ -1038,46 +938,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			}
 		} catch (Exception e) {
 			logger.error("Error when populate component" + e.getMessage(), e);
-		}
-	}
-
-	/**
-	 * Synchronizes the cache with the current discovery results: adds missing IDs from {@code deviceMap}
-	 * (reusing existing instances) and removes IDs that no longer exist in {@code deviceMap}.
-	 * Call after updating {@code deviceMap} and before rendering statistics.
-	 * Mutates shared state
-	 */
-	private void reconcileCacheWithDeviceMap(Map<String, String> stats) {
-		for (String id : deviceMap.keySet()) {
-			QSYSPeripheralDevice dev = deviceMap.get(id);
-			if (dev != null) {
-				mapOfIdAndAggregatedDeviceList.putIfAbsent(id, dev);
-			}
-		}
-		if("Standby".equals(stats.get("State"))){
-			mapOfIdAndAggregatedDeviceList.keySet().retainAll(deviceMap.keySet());
-		}
-	}
-
-	/**
-	 * Refills the device-processing queue using round-robin scheduling.
-	 *
-	 * @param batchSize maximum number of device IDs to enqueue.
-	 */
-	private void refillQueueRoundRobin(int batchSize) {
-		if (!deviceIdDequeue.isEmpty() || deviceMap.isEmpty()) return;
-
-		if (rrSnapshot.size() != deviceMap.size() || !rrSnapshot.containsAll(deviceMap.keySet())) {
-			rrSnapshot = new ArrayList<>(deviceMap.keySet());
-			rrIndex = 0;
-		}
-
-		int added = 0;
-		while (added < batchSize && !rrSnapshot.isEmpty()) {
-			String id = rrSnapshot.get(rrIndex);
-			rrIndex = (rrIndex + 1) % rrSnapshot.size();
-			deviceIdDequeue.addLast(id);
-			added++;
 		}
 	}
 
@@ -1423,29 +1283,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	}
 
 	/**
-	 * Adds the aggregator device name as a prefix to the given device ID.
-	 *
-	 * @param deviceId the original device identifier (without prefix)
-	 * @return the device ID with the aggregator prefix applied
-	 */
-	private String withAggregatorPrefix(String deviceId) {
-		return aggregatorDeviceName + "_" + deviceId;
-	}
-
-	/**
-	 * Removes the aggregator device name prefix from the given device ID if present.
-	 *
-	 * @param prefixedId the device ID with aggregator prefix
-	 * @return the original device ID without the aggregator prefix, or the input value if no prefix is found
-	 */
-	private String removeAggregatorPrefix(String prefixedId) {
-		if (prefixedId != null && prefixedId.startsWith(aggregatorDeviceName + "_")) {
-			return prefixedId.substring((aggregatorDeviceName + "_").length());
-		}
-		return prefixedId;
-	}
-
-	/**
 	 * Formats uptime from a string representation "hh:mm:ss" into "X hour(s) Y minute(s)" format.
 	 *
 	 * @param time the uptime string to format
@@ -1529,113 +1366,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		} catch (Exception e) {
 			throw new ResourceNotReachableException("Unable to retrieve the authorization token, endpoint not reachable", e);
 		}
-	}
-
-	/**
-	 * Refresh aggregator-level timestamps to keep the data loader active.
-	 */
-	private void refreshTimestamps() {
-		nextDevicesCollectionIterationTimestamp = System.currentTimeMillis();
-		updateValidRetrieveStatisticsTimestamp();
-	}
-
-	/**
-	 * Take a thread-safe snapshot of the device map.
-	 *
-	 * @return a shallow copy of the current device map
-	 */
-	private Map<String, QSYSPeripheralDevice> snapshotDevices() {
-		synchronized (mapOfIdAndAggregatedDeviceList) {
-			return new HashMap<>(mapOfIdAndAggregatedDeviceList);
-		}
-	}
-
-	/**
-	 * Build an AggregatedDevice object from a QSYSPeripheralDevice.
-	 *
-	 * @param id  device identifier
-	 * @param device peripheral device with raw stats
-	 * @return AggregatedDevice or null if filtered out
-	 */
-	private AggregatedDevice buildAggregatedDevice(String id, QSYSPeripheralDevice device) {
-		if (isFilteredOut(id, device)) {
-			return null;
-		}
-
-		AggregatedDevice aggregatedDevice = new AggregatedDevice();
-		aggregatedDevice.setDeviceId(withAggregatorPrefix(id));
-
-		Map<String, String> props = device.getStats();
-		setDeviceStatus(props, aggregatedDevice);
-		aggregatedDevice.setProperties(props);
-
-		String displayName = applyTypeSpecificProperties(id, device, props, aggregatedDevice);
-		aggregatedDevice.setDeviceName(withAggregatorPrefix(displayName));
-
-		provisionTypedStatistics(aggregatedDevice.getProperties(), aggregatedDevice);
-		aggregatedDevice.setControllableProperties(device.getAdvancedControllableProperties());
-		aggregatedDevice.setTimestamp(System.currentTimeMillis());
-		return aggregatedDevice;
-	}
-
-	/**
-	 * Check if a device should be excluded based on type or name filters.
-	 *
-	 * @param id  device identifier
-	 * @param dev peripheral device
-	 * @return true if the device should be skipped
-	 */
-	private boolean isFilteredOut(String id, QSYSPeripheralDevice dev) {
-		if (!StringUtils.isNullOrEmpty(filterDeviceByQSYSType)
-				&& !filterDeviceByQSYSTypeSet.contains(dev.getType())) {
-			return true;
-		}
-		return !StringUtils.isNullOrEmpty(filterDeviceByName)
-				&& !filterDeviceByNameSet.contains(id);
-	}
-
-	/**
-	 * Set online/offline status on an aggregated device based on its STATUS property.
-	 *
-	 * @param props device properties map
-	 * @param agg   aggregated device
-	 */
-	private void setDeviceStatus(Map<String, String> props, AggregatedDevice agg) {
-		String status = props.get(QSYSCoreConstant.STATUS);
-		if (status == null || QSYSCoreConstant.NULL.equalsIgnoreCase(status)) {
-			agg.setDeviceOnline(false);
-			return;
-		}
-		boolean online = QSYSCoreConstant.LIST_ONLINE_STATUS.stream()
-				.anyMatch(s -> s.equalsIgnoreCase(status.trim()));
-		agg.setDeviceOnline(online);
-	}
-
-	/**
-	 * Apply type-specific properties and adjust display name if needed.
-	 *
-	 * @param id    device identifier
-	 * @param dev   peripheral device
-	 * @param props device properties
-	 * @param agg   aggregated device
-	 * @return the display name for this device
-	 */
-	private String applyTypeSpecificProperties(String id, QSYSPeripheralDevice dev, Map<String, String> props, AggregatedDevice agg) {
-		String name = id;
-
-		if (QSYSCoreConstant.EXTERNAL.equals(dev.getType())) {
-			String deviceName = props.get(PluginDeviceMetric.DEVICE_NAME.getMetric());
-			if (StringUtils.isNotNullOrEmpty(deviceName)
-					&& !QSYSCoreConstant.DEFAUL_DATA.equalsIgnoreCase(deviceName)) {
-				name = deviceName;
-			}
-			agg.getProperties().put(QSYSCoreConstant.QSYS_TYPE, QSYSCoreConstant.EXTERNAL);
-			props.remove(PluginDeviceMetric.DEVICE_NAME.getMetric());
-		} else {
-			agg.getProperties().put(QSYSCoreConstant.QSYS_TYPE,
-					getTypeByResponseType(dev.getType()));
-		}
-		return name;
 	}
 
 	/**
