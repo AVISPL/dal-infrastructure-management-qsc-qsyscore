@@ -357,8 +357,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * locks on the same shared resource by the same thread.
 	 */
 	private final ReentrantLock reentrantLock = new ReentrantLock();
-	/***/
-	private final ReentrantLock qrcLock = new ReentrantLock();
 
 	/**
 	 * List of aggregated device
