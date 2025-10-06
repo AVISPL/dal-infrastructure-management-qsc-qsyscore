@@ -7,10 +7,7 @@ import java.io.IOException;
 import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -58,6 +55,8 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.rpc.Rp
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.statistics.DynamicStatisticsDefinitions;
 import com.avispl.symphony.dal.util.ControllablePropertyFactory;
 import com.avispl.symphony.dal.util.StringUtils;
+
+import static java.util.concurrent.CompletableFuture.runAsync;
 
 /**
  * QSYSCoreAggregatorCommunicator
@@ -192,7 +191,29 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * Executor that runs all the async operations, that is posting and
 	 * {@link #devicesExecutionPool} is keeping track of
 	 */
-	private static ExecutorService executorService;
+	private ExecutorService executorService;
+	/**
+	 * Executor service for QRC requests
+	 * @since 1.2.0
+	 * */
+	private ExecutorService qrcExecutorService;
+	/**
+	 * QRC process, responsible for aggregated devices collection from the remote API
+	 * @since 1.2.0
+	 * */
+	private CompletableFuture<?> qrcProcess;
+
+	/**
+	 * Local cache for QRC statistics, collected in {@link #qrcProcess}
+	 * @since 1.2.0
+	 * */
+	private ConcurrentHashMap<String, String> qrcStatistics = new ConcurrentHashMap<>();
+
+	/**
+	 * Local cache for QRC controls data, collected in {@link #qrcProcess}
+	 * @since 1.2.0
+	 * */
+	private volatile List<AdvancedControllableProperty> qrcControls = new ArrayList<>();
 
 	/**
 	 * Configurable property for historical properties, comma separated values kept as set locally
@@ -299,7 +320,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * Map of ID device and device detail
 	 */
-	public Map<String, QSYSPeripheralDevice> mapOfIdAndAggregatedDeviceList = Collections.synchronizedMap(new HashMap<>());
+	public ConcurrentHashMap<String, QSYSPeripheralDevice> mapOfIdAndAggregatedDeviceList = new ConcurrentHashMap<>();
 
 	/**
 	 * Snapshot of candidates used by the round-robin selector.
@@ -351,6 +372,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		adapterProperties = new Properties();
 		adapterProperties.load(getClass().getResourceAsStream("/version.properties"));
 		this.setTrustAllCertificates(true);
+
+		qrcExecutorService = Executors.newFixedThreadPool(1);
 	}
 
 	/**
@@ -508,13 +531,15 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	@Override
 	public List<Statistics> getMultipleStatistics() throws Exception {
+		if (qrcExecutorService == null) {
+			qrcExecutorService = Executors.newFixedThreadPool(1);
+		}
 		ExtendedStatistics extendedStatistics = new ExtendedStatistics();
-
 		// This is to make sure if populateMonitoringAndControllableProperties the statistics is being fetched before/after any set of control operations
 		reentrantLock.lock();
 		try {
 			if (!isEmergencyDelivery) {
-				deviceMap.clear();
+//				deviceMap.clear();
 				Map<String, String> stats = new HashMap<>();
 				Map<String, String> dynamicStatistics = new HashMap<>();
 				List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
@@ -550,9 +575,23 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					filterDeviceByNameSet = convertUserInput(filterDeviceByName);
 					updateFilterDeviceTypeSet();
 				}
-
 				populateQSYSAggregatorMonitoringData(stats);
-				populateQSYSComponent(stats, controllableProperties);
+
+				if (qrcProcess == null || qrcProcess.isDone() || qrcProcess.isCompletedExceptionally()) {
+					qrcProcess = runAsync(() ->
+                            populateQSYSComponent(qrcStatistics, qrcControls)
+//                            populateQSYSComponent(stats, controllableProperties);
+									, qrcExecutorService).whenComplete((unused, throwable) -> {
+						if (logger.isDebugEnabled() && throwable == null) {
+							logger.debug("QRC Process is completed. Ready for the new cycle when getMultipleStatistics() call is addressed.");
+						} else {
+							logger.error("Unable to retrieve QRC Data.", throwable);
+						}
+						stats.putAll(qrcStatistics);
+						controllableProperties.addAll(qrcControls);
+					});
+				}
+
 				retrieveMetadata(stats);
 				reconcileCacheWithDeviceMap(stats);
 
@@ -561,27 +600,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						: deviceMap.size();
 				stats.put(QSYSCoreConstant.NUMBER_OF_DEVICE, String.valueOf(currentSizeDeviceMap));
 
-				if (localPollingInterval == 0) {
-					localPollingInterval = QSYSCoreConstant.MIN_POLLING_INTERVAL;
-					localPollingInterval = calculatingLocalPollingInterval();
-					deviceStatisticsCollectionThreads = calculatingThreadQuantity();
-
-					for (String deviceId : errorDeviceMap.keySet()) {
-						if (deviceMap.containsKey(deviceId)) {
-							deviceIdDequeue.addLast(deviceId);
-						}
-					}
-
-					for (String deviceId : deviceMap.keySet()) {
-						if (!errorDeviceMap.containsKey(deviceId)) {
-							deviceIdDequeue.addLast(deviceId);
-						}
-					}
-				} else {
-					int batchSize = QSYSCoreConstant.MAX_DEVICE_QUANTITY_PER_THREAD;
-					refillQueueRoundRobin(batchSize);
-				}
-				populateAggregatedMonitoringData(currentSizeDeviceMap);
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setDynamicStatistics(dynamicStatistics);
 				extendedStatistics.setControllableProperties(controllableProperties);
@@ -722,6 +740,32 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				resultAggregatedDeviceList.add(aggregatedDevice);
 			}
 		}
+
+		if (localPollingInterval == 0) {
+			localPollingInterval = QSYSCoreConstant.MIN_POLLING_INTERVAL;
+			localPollingInterval = calculatingLocalPollingInterval();
+			deviceStatisticsCollectionThreads = calculatingThreadQuantity();
+
+			for (String deviceId : errorDeviceMap.keySet()) {
+				if (deviceMap.containsKey(deviceId)) {
+					deviceIdDequeue.addLast(deviceId);
+				}
+			}
+
+			for (String deviceId : deviceMap.keySet()) {
+				if (!errorDeviceMap.containsKey(deviceId)) {
+					deviceIdDequeue.addLast(deviceId);
+				}
+			}
+		} else {
+			int batchSize = QSYSCoreConstant.MAX_DEVICE_QUANTITY_PER_THREAD;
+			refillQueueRoundRobin(batchSize);
+		}
+		int currentSizeDeviceMap = deviceMap.isEmpty()
+				? mapOfIdAndAggregatedDeviceList.size()
+				: deviceMap.size();
+
+		populateAggregatedMonitoringData(currentSizeDeviceMap);
 		return resultAggregatedDeviceList;
 	}
 
@@ -816,6 +860,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		if (executorService != null) {
 			executorService.shutdownNow();
 			executorService = null;
+		}
+		if (qrcExecutorService != null) {
+			qrcExecutorService.shutdownNow();
+			qrcExecutorService = null;
 		}
 		if (qrcCommunicator != null) {
 			qrcCommunicator.destroyChannel();
@@ -1044,7 +1092,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 					//Because some device could be removed, so we need save all existed device
 					Set<String> existDeviceSet = new HashSet<>();
-
+					deviceMap.clear();
 					for (ComponentInfo componentInfo : componentWrapper.getResult()) {
 						if (QSYSCoreConstant.GAIN_TYPE.equals(componentInfo.getType())) {
 							retrieveGainComponent(stats, controllableProperties, componentInfo.getId());
@@ -1895,7 +1943,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * @throws IllegalArgumentException when get limit rate exceed error
 	 */
 	private int calculatingLocalPollingInterval() {
-
 		try {
 			int pollingIntervalValue = QSYSCoreConstant.MIN_POLLING_INTERVAL;
 			if (StringUtils.isNotNullOrEmpty(pollingInterval)) {
@@ -1970,7 +2017,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	}
 
 	/**
-	 * Retrieve information of all device
+	 * Retrieve information for all remote devices
 	 *
 	 * @param currentSizeDeviceMap Current size of cachedClients List, this param use to check number of clients was change or not
 	 */
