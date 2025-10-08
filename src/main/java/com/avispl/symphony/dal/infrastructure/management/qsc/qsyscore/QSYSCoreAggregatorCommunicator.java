@@ -149,7 +149,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						continue loop;
 					}
 					if (logger.isDebugEnabled()) {
-						logger.debug("Fetching other than aggregated device list");
+						logger.debug("Fetching aggregated devices statuses for device list: " + String.join(",", this.deviceIds));
 					}
 
 					long currentTimestamp = System.currentTimeMillis();
@@ -260,7 +260,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * Set store all name for filter plugin
 	 */
-	private Set<String> filterPluginByNameSet;
+	private Set<String> filterPluginByNameSet = new HashSet<>();
 
 	/**
 	 * Filter gain by name
@@ -270,7 +270,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * Set store all name for filter gain
 	 */
-	private Set<String> filterGainComponentByNameSet;
+	private Set<String> filterGainComponentByNameSet = new HashSet<>();
 
 	/**
 	 * Map store and update all device can not get information
@@ -598,7 +598,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				int currentSizeDeviceMap = deviceMap.isEmpty()
 						? mapOfIdAndAggregatedDeviceList.size()
 						: deviceMap.size();
-				stats.put(QSYSCoreConstant.NUMBER_OF_DEVICE, String.valueOf(currentSizeDeviceMap));
+				dynamicStatistics.put(QSYSCoreConstant.NUMBER_OF_DEVICE, String.valueOf(currentSizeDeviceMap));
 
 				extendedStatistics.setStatistics(stats);
 				extendedStatistics.setDynamicStatistics(dynamicStatistics);
@@ -720,9 +720,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		}
 		refreshTimestamps();
 
-		if (!deviceMap.isEmpty()) {
-			retrieveAggregatedDeviceByIdList(new ArrayList<>(deviceMap.keySet()));
-		}
+//		if (!deviceMap.isEmpty()) {
+//			retrieveAggregatedDeviceByIdList(new ArrayList<>(deviceMap.keySet()));
+//		}
 		Map<String, QSYSPeripheralDevice> snapshot = snapshotDevices();
 		resultAggregatedDeviceList.clear();
 		for (Map.Entry<String, QSYSPeripheralDevice> entry : snapshot.entrySet()) {
@@ -956,11 +956,12 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		} catch (FailedLoginException e) {
 			throw new FailedLoginException("Unable to login. Please check device credentials");
 		} catch (Exception e) {
-			//Populate default value if request is error
-			for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
-				stats.put(propertiesName.getName(), QSYSCoreConstant.DEFAUL_DATA);
-			}
-			logger.error("Error when retrieve aggregator information", e);
+			throw new RuntimeException("Unable to retrieve core information.", e);
+//			//Populate default value if request is error
+//			for (QSYSCoreSystemMetric propertiesName : QSYSCoreSystemMetric.values()) {
+//				stats.put(propertiesName.getName(), QSYSCoreConstant.DEFAUL_DATA);
+//			}
+//			logger.error("Error when retrieve aggregator information", e);
 		}
 	}
 
@@ -990,7 +991,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 			}
 		}catch (Exception e) {
-			logger.error("Error when retrieve aggregator redundancy information", e);
+			throw new RuntimeException("Unable to retrieve core redundancy information.", e);
+//			logger.error("Error when retrieve aggregator redundancy information", e);
 		}
 	}
 
@@ -1013,8 +1015,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 			}
 		} catch (Exception e) {
-			populateNetworkDefaultValue(stats);
-			logger.error("Error when retrieve aggregator network information", e);
+			throw new RuntimeException("Unable to populate core LAN information.", e);
+//			populateNetworkDefaultValue(stats);
+//			logger.error("Error when retrieve aggregator network information", e);
 		}
 	}
 
@@ -1047,28 +1050,29 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						.ifPresent(err -> logger.warn("STATUS_GET request resulted in an error for aggregator " + aggregatorDeviceName + ": " + err));
 			}
 		} catch (Exception e) {
-			for (QSYSCoreDesignMetric qsysCoreDesignMetric : QSYSCoreDesignMetric.values()) {
-				stats.put(qsysCoreDesignMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
-			}
-			logger.error("Error when retrieve aggregator design", e);
+			throw new RuntimeException("Unable to retrieve core design metrics.", e);
+//			for (QSYSCoreDesignMetric qsysCoreDesignMetric : QSYSCoreDesignMetric.values()) {
+//				stats.put(qsysCoreDesignMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
+//			}
+//			logger.error("Error when retrieve aggregator design", e);
 		}
 	}
 
-	/**
-	 * Populate default is none for network properties
-	 *
-	 * @param stats list of Statistics
-	 */
-	private void populateNetworkDefaultValue(Map<String, String> stats) {
-		for (QSYSCoreNetworkMetric qsysCoreNetworkMetric : QSYSCoreNetworkMetric.values()) {
-			if (QSYSCoreNetworkMetric.HOSTNAME.getName().equals(qsysCoreNetworkMetric.getName())) {
-				stats.put(qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
-				continue;
-			}
-			stats.put(QSYSCoreConstant.LAN_A + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
-			stats.put(QSYSCoreConstant.LAN_B + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
-		}
-	}
+//	/**
+//	 * Populate default is none for network properties
+//	 *
+//	 * @param stats list of Statistics
+//	 */
+//	private void populateNetworkDefaultValue(Map<String, String> stats) {
+//		for (QSYSCoreNetworkMetric qsysCoreNetworkMetric : QSYSCoreNetworkMetric.values()) {
+//			if (QSYSCoreNetworkMetric.HOSTNAME.getName().equals(qsysCoreNetworkMetric.getName())) {
+//				stats.put(qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
+//				continue;
+//			}
+//			stats.put(QSYSCoreConstant.LAN_A + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
+//			stats.put(QSYSCoreConstant.LAN_B + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
+//		}
+//	}
 
 	/**
 	 * Get list of component
@@ -1116,7 +1120,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						.ifPresent(err -> logger.warn("Have error response: " + err));
 			}
 		} catch (Exception e) {
-			logger.error("Error when populate component" + e.getMessage(), e);
+			deviceMap.clear();
+			logger.error("Unable to retrieve QSYS Component.", e);
 		}
 	}
 
