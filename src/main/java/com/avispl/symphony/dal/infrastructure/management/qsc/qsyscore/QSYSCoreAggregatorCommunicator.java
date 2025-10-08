@@ -1058,21 +1058,21 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		}
 	}
 
-	/**
-	 * Populate default is none for network properties
-	 *
-	 * @param stats list of Statistics
-	 */
-	private void populateNetworkDefaultValue(Map<String, String> stats) {
-		for (QSYSCoreNetworkMetric qsysCoreNetworkMetric : QSYSCoreNetworkMetric.values()) {
-			if (QSYSCoreNetworkMetric.HOSTNAME.getName().equals(qsysCoreNetworkMetric.getName())) {
-				stats.put(qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
-				continue;
-			}
-			stats.put(QSYSCoreConstant.LAN_A + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
-			stats.put(QSYSCoreConstant.LAN_B + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
-		}
-	}
+//	/**
+//	 * Populate default is none for network properties
+//	 *
+//	 * @param stats list of Statistics
+//	 */
+//	private void populateNetworkDefaultValue(Map<String, String> stats) {
+//		for (QSYSCoreNetworkMetric qsysCoreNetworkMetric : QSYSCoreNetworkMetric.values()) {
+//			if (QSYSCoreNetworkMetric.HOSTNAME.getName().equals(qsysCoreNetworkMetric.getName())) {
+//				stats.put(qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
+//				continue;
+//			}
+//			stats.put(QSYSCoreConstant.LAN_A + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
+//			stats.put(QSYSCoreConstant.LAN_B + QSYSCoreConstant.HASH + qsysCoreNetworkMetric.getName(), QSYSCoreConstant.DEFAUL_DATA);
+//		}
+//	}
 
 	/**
 	 * Get list of component
