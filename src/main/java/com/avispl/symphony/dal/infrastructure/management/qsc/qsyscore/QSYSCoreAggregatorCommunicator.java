@@ -1932,7 +1932,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				// Remove start and end spaces of each adapterProperty
 				Set<String> setAdapterPropertiesElement = new HashSet<>();
 				for (String adapterPropertyElement : listAdapterPropertyElement) {
-					setAdapterPropertiesElement.add(adapterPropertyElement.trim());
+					setAdapterPropertiesElement.add(removeAggregatorPrefix(adapterPropertyElement.trim()));
 				}
 				return setAdapterPropertiesElement;
 			}
