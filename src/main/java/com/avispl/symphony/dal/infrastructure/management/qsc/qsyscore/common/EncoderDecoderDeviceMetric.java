@@ -60,15 +60,15 @@ public enum EncoderDecoderDeviceMetric implements DeviceMetric {
 	ENC_CBR_MODE("Encoder#CBRMode", "enc.dev.config.cbrMode"),
 	ENC_FORCE_IFRAME("Encoder#ForceIFrame", "enc.dev.config.forceIFrame"),
 	ENC_INTER_REFRESH("Encoder#InterRefresh", "enc.dev.config.interRefresh"),
-	ENC_MBR_LATENCY("Encoder#Latency", "enc.dev.config.mbr.latency"),
+	ENC_MBR_LATENCY("Encoder#MBRLatency", "enc.dev.config.mbr.latency"),
 	ENC_H264_LEVEL("Encoder#H264Level", "enc.dev.config.h264Level"),
 
-	NET_HDMI_AVG_BITRATE("HDMI%s#AvgBitrate", "network.stats.hdmi.input.%s.avg.bitrate"),
-	NET_HDMI_PEAK_BITRATE("HDMI%s#PeakBitrate", "network.stats.hdmi.input.%s.peak.bitrate"),
-	NET_HDMI_DROP_COUNT("HDMI%s#DropCount", "network.stats.hdmi.input.%s.drop.count"),
-	NET_HDMI_DSCP("HDMI%s#DSCP", "network.stats.hdmi.input.%s.dscp"),
-	NET_HDMI_NETWORK_TEST("HDMI%s#NetworkTest", "network.stats.hdmi.input.%s.network.test"),
-	NET_HDMI_NETWORK_TEST_STATUS("HDMI%s#NetworkTestStatus", "network.stats.hdmi.input.%s.network.test.status");
+	NET_HDMI_AVG_BITRATE("HDMI%sInput#AvgBitrate", "network.stats.hdmi.input.%s.avg.bitrate"),
+	NET_HDMI_PEAK_BITRATE("HDMI%sInput#PeakBitrate", "network.stats.hdmi.input.%s.peak.bitrate"),
+	NET_HDMI_DROP_COUNT("HDMI%sInput#DropCount", "network.stats.hdmi.input.%s.drop.count"),
+	NET_HDMI_DSCP("HDMI%sInput#DSCP", "network.stats.hdmi.input.%s.dscp"),
+	NET_HDMI_NETWORK_TEST("HDMI%sInput#NetworkTest", "network.stats.hdmi.input.%s.network.test"),
+	NET_HDMI_NETWORK_TEST_STATUS("HDMI%sInput#NetworkTestStatus", "network.stats.hdmi.input.%s.network.test.status");
 
 	private String metric;
 	private String property;
