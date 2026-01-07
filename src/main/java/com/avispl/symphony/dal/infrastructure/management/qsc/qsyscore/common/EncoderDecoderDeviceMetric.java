@@ -16,13 +16,21 @@ public enum EncoderDecoderDeviceMetric implements DeviceMetric {
 	BOARD_REVISION("BoardRevision", "board.revision"),
 	IO_CARD_ID("IOCardID", "io.card.id"),
 
-	POE_STATUS("PoE#Status", "poe.status"),
-	POE_STATUS_LED("PoE#StatusLed", "poe.status.led"),
+	POE_STATUS("System#PoEStatus", "poe.status"),
+	POE_STATUS_LED("System#PoEStatusLed", "poe.status.led"),
 	SYSTEM_AUX_POWER("System#AuxPower", "system.aux.power"),
 	SYSTEM_AUX_VOLTAGE("System#AuxVoltage", "system.aux.voltage"),
-	SYSTEM_TEMPERATURE("System#Temperature", "system.temperature"),
-	PROCESSOR_TEMPERATURE("System#CPUTemperature", "processor.temperature"),
-	FAN_SPEED("System#Fan%sSpeed", "system.fan.%s.speed"),
+	SYSTEM_TEMPERATURE("System#Temperature(C)", "system.temperature"),
+	PROCESSOR_TEMPERATURE("System#CPUTemperature(C)", "processor.temperature"),
+	FAN_SPEED("System#Fan%sSpeed(rpm)", "system.fan.%s.speed"),
+	FAN_AUTO("System#FanAuto", "fan.auto.button"),
+	FAN_PWM_WRITE("System#FanPWMWrite", "fan.pwm.write"),
+	FAN_PWM_READ("System#FanPWMRead", "fan.pwm.read"),
+	USBC_PD_ACTIVE("System#USBPDActive", "usbcpd.active"),
+//	USBC_PD_ENABLE("USB#PDEnable", "usbcpd.enable"),
+//	USB_RESET("USB#Reset", "initiate.usb.reset");
+	USBC_PD_FAULT("System#USBPDFault", "usbcpd.fault"),
+	USBC_PD_VOLTAGE("System#USBPDVoltage(V)", "usbcpd.voltage.current"),
 
 	VOLT_12V("Power#12VPort", "volt.12v"),
 	VOLT_5V("Power#5VPort", "volt.5v"),
@@ -44,8 +52,8 @@ public enum EncoderDecoderDeviceMetric implements DeviceMetric {
 	LAN_SPEED("LAN#Speed", "lan.a.speed"),
 	LAN_STATE("LAN#State", "lan.a.state"),
 
-	ENC_WIDTH("Encoder#Width", "enc.dev.config.width"),
-	ENC_HEIGHT("Encoder#Height", "enc.dev.config.height"),
+	ENC_WIDTH("Encoder#Width(px)", "enc.dev.config.width"),
+	ENC_HEIGHT("Encoder#Height(px)", "enc.dev.config.height"),
 	ENC_FRAMERATE("Encoder#FrameRate", "enc.dev.config.frameRate"),
 	ENC_QUANTIZATION("Encoder#Quantization", "enc.dev.config.quantization"),
 	ENC_QUANTIZATION_DELTA("Encoder#QuantizationDelta", "enc.dev.config.quantizationDelta"),
@@ -55,22 +63,12 @@ public enum EncoderDecoderDeviceMetric implements DeviceMetric {
 	ENC_MBR_LATENCY("Encoder#Latency", "enc.dev.config.mbr.latency"),
 	ENC_H264_LEVEL("Encoder#H264Level", "enc.dev.config.h264Level"),
 
-	NET_HDMI_AVG_BITRATE("HDMI_%s#AvgBitrate", "network.stats.hdmi.input.%s.avg.bitrate"),
-	NET_HDMI_PEAK_BITRATE("HDMI_%s#PeakBitrate", "network.stats.hdmi.input.%s.peak.bitrate"),
-	NET_HDMI_DROP_COUNT("HDMI_%s#DropCount", "network.stats.hdmi.input.%s.drop.count"),
-	NET_HDMI_DSCP("HDMI_%s#DSCP", "network.stats.hdmi.input.%s.dscp"),
-	NET_HDMI_NETWORK_TEST("HDMI_%s#NetworkTest", "network.stats.hdmi.input.%s.network.test"),
-	NET_HDMI_NETWORK_TEST_STATUS("HDMI_%s#NetworkTestStatus", "network.stats.hdmi.input.%s.network.test.status"),
-
-	FAN_AUTO("Fan#Auto", "fan.auto.button"),
-	FAN_PWM_WRITE("Fan#PWMWrite", "fan.pwm.write"),
-	FAN_PWM_READ("Fan#PWMRead", "fan.pwm.read"),
-
-	USBC_PD_ACTIVE("USB#PDActive", "usbcpd.active"),
-//	USBC_PD_ENABLE("USB#PDEnable", "usbcpd.enable"),
-//	USB_RESET("USB#Reset", "initiate.usb.reset");
-	USBC_PD_FAULT("USB#PDFault", "usbcpd.fault"),
-	USBC_PD_VOLTAGE("USB#PDVoltage", "usbcpd.voltage.current");
+	NET_HDMI_AVG_BITRATE("HDMI%s#AvgBitrate", "network.stats.hdmi.input.%s.avg.bitrate"),
+	NET_HDMI_PEAK_BITRATE("HDMI%s#PeakBitrate", "network.stats.hdmi.input.%s.peak.bitrate"),
+	NET_HDMI_DROP_COUNT("HDMI%s#DropCount", "network.stats.hdmi.input.%s.drop.count"),
+	NET_HDMI_DSCP("HDMI%s#DSCP", "network.stats.hdmi.input.%s.dscp"),
+	NET_HDMI_NETWORK_TEST("HDMI%s#NetworkTest", "network.stats.hdmi.input.%s.network.test"),
+	NET_HDMI_NETWORK_TEST_STATUS("HDMI%s#NetworkTestStatus", "network.stats.hdmi.input.%s.network.test.status");
 
 	private String metric;
 	private String property;
