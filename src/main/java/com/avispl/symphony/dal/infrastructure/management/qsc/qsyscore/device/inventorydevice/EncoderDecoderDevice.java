@@ -70,12 +70,17 @@ public class EncoderDecoderDevice extends QSYSPeripheralDevice {
                         value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE) ? String.valueOf(control.get(QSYSCoreConstant.CONTROL_VALUE).asDouble()) : QSYSCoreConstant.DEFAUL_DATA;
                         break;
                     case QSYSCoreConstant.TYPE_BOOLEAN:
-                        value = (control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE) ? (control.get(QSYSCoreConstant.CONTROL_VALUE).asBoolean() ? QSYSCoreConstant.TRUE : QSYSCoreConstant.FALSE) : QSYSCoreConstant.DEFAUL_DATA).toLowerCase();
+                        value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE) ? (control.get(QSYSCoreConstant.CONTROL_VALUE).asBoolean() ? QSYSCoreConstant.TRUE : QSYSCoreConstant.FALSE) : QSYSCoreConstant.DEFAUL_DATA;
                         break;
                     default:
                         value = Optional.ofNullable(control.get(QSYSCoreConstant.CONTROL_VALUE_STRING)).map(JsonNode::asText).orElse(QSYSCoreConstant.DEFAUL_DATA);
                         break;
                 }
+
+                if ("True".equals(value) || "False".equals(value)) {
+                    value = value.toLowerCase();
+                }
+
                 switch (metric){
                     default:
                         this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? uppercaseFirstCharacter(value) : QSYSCoreConstant.DEFAUL_DATA);
