@@ -90,6 +90,7 @@ public class QSYSCoreConstant {
 	public static final String RECEIVER_DEVICE = "input_box";
 	public static final String LOUDSPEAKER_DEVICE = "lua_speaker";
 	public static final String STATUS_AMP_DEVICE = "amplifier_cxq_status";
+	public static final String STATUS_NV_ENCODER_DECODER = "vstreamer_nv1smb_status";
 
 	public static final String MONITORING_PROXY = "monitoring_proxy";
 	public static final String PLUGIN = "PLUGIN";
@@ -113,7 +114,7 @@ public class QSYSCoreConstant {
 	public static final List<String> ON_COLOR = Arrays.asList("White", "Green", "Blue", "Red", "Yellow", "Orange", "Cyan", "Pink");
 	public static final Set<String> SUPPORTED_DEVICE_TYPE = new HashSet<>(
 			Arrays.asList(CAMERA_DEVICE, PROCESSOR_DEVICE, DISPLAY_DEVICE, STREAM_INPUT_DEVICE, STREAM_OUTPUT_DEVICE, VIDEO_IO_DEVICE, VIDEO_SOURCE_DEVICE, CONTROL_INTERFACE_DEVICE, MONITORING_PROXY,
-					PLUGIN, TRANSMITTER_DEVICE, AMPLIFIER_DEVICE, RECEIVER_DEVICE, LOUDSPEAKER_DEVICE, STATUS_AMP_DEVICE));
+					PLUGIN, TRANSMITTER_DEVICE, AMPLIFIER_DEVICE, RECEIVER_DEVICE, LOUDSPEAKER_DEVICE, STATUS_AMP_DEVICE, STATUS_NV_ENCODER_DECODER));
 	public static final List<String> PLUGIN_LIST = Arrays.asList(SENNHEISER, MIDDLE_ATLANTIC, NETGEAR);
 	public static final List<String> LIST_ONLINE_STATUS = Arrays.asList("Ok", "Compromised", "Fault","Initializing");
 	/**
@@ -146,6 +147,7 @@ public class QSYSCoreConstant {
 	public static final String DISPLAY_TYPE = "Display";
 	public static final String STREAM_IO_TYPE = "Streaming I/O";
 	public static final String VIDEO_IO_TYPE = "Video I/O";
+	public static final String ENCODER_DECODER_TYPE = "Encoder/Decoder";
 	public static final String VIDEO_SOURCE_TYPE = "Video Source";
 	public static final String CONTROL_INTERFACE_TYPE = "Control Interface";
 	public static final String EXTERNAL = "External";

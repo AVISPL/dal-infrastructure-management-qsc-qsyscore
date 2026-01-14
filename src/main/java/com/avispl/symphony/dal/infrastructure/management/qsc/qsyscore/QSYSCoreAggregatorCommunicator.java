@@ -1252,8 +1252,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				return new TransmitterDevice();
 			case QSYSCoreConstant.AMPLIFIER_DEVICE:
 				return new AmplifierDevice();
+            case QSYSCoreConstant.STATUS_NV_ENCODER_DECODER:
+                return new EncoderDecoderDevice();
 			case QSYSCoreConstant.RECEIVER_DEVICE:
-			return new ReceiverDevice();
+			    return new ReceiverDevice();
 			case QSYSCoreConstant.LOUDSPEAKER_DEVICE:
 				return new LoudSpeakerDevice();
 			case QSYSCoreConstant.STATUS_AMP_DEVICE:
@@ -1894,6 +1896,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				return QSYSCoreConstant.CONTROL_INTERFACE_TYPE;
 			case QSYSCoreConstant.VIDEO_IO_DEVICE:
 				return QSYSCoreConstant.VIDEO_IO_TYPE;
+            case QSYSCoreConstant.STATUS_NV_ENCODER_DECODER:
+                return QSYSCoreConstant.ENCODER_DECODER_TYPE;
 			case QSYSCoreConstant.VIDEO_SOURCE_DEVICE:
 				return QSYSCoreConstant.VIDEO_SOURCE_TYPE;
 			case QSYSCoreConstant.MONITORING_PROXY:
