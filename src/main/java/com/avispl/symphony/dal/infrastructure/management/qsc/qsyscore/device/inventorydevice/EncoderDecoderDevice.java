@@ -76,14 +76,14 @@ public class EncoderDecoderDevice extends QSYSPeripheralDevice {
                         value = Optional.ofNullable(control.get(QSYSCoreConstant.CONTROL_VALUE_STRING)).map(JsonNode::asText).orElse(QSYSCoreConstant.DEFAUL_DATA);
                         break;
                 }
-
                 if ("True".equals(value) || "False".equals(value)) {
                     value = value.toLowerCase();
+                } else {
+                    value = StringUtils.isNotNullOrEmpty(value) ? uppercaseFirstCharacter(value) : QSYSCoreConstant.DEFAUL_DATA;
                 }
-
                 switch (metric){
                     default:
-                        this.getStats().put(metric.getMetric(), StringUtils.isNotNullOrEmpty(value) ? uppercaseFirstCharacter(value) : QSYSCoreConstant.DEFAUL_DATA);
+                        this.getStats().put(metric.getMetric(), value);
                         break;
                 }
             }
