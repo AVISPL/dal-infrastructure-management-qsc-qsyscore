@@ -74,7 +74,9 @@ public class EncoderDecoderDevice extends QSYSPeripheralDevice {
                         break;
                     default:
                         value = Optional.ofNullable(control.get(QSYSCoreConstant.CONTROL_VALUE_STRING)).map(JsonNode::asText).orElse(QSYSCoreConstant.DEFAUL_DATA);
-                        value = StringUtils.isNotNullOrEmpty(value) ? uppercaseFirstCharacter(value) : QSYSCoreConstant.DEFAUL_DATA;
+                        if (StringUtils.isNotNullOrEmpty(value)) {
+                            value = uppercaseFirstCharacter(value);
+                        }
                         break;
                 }
 
