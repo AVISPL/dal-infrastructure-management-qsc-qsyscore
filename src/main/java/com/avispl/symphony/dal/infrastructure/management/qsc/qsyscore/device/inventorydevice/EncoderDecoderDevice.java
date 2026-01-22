@@ -37,6 +37,7 @@ public class EncoderDecoderDevice extends QSYSPeripheralDevice {
                     !deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
                 return;
             }
+            String metricName = null;
             for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
                 String controlName = Optional.ofNullable(control.get(QSYSCoreConstant.CONTROL_NAME))
                         .map(JsonNode::asText)
@@ -52,8 +53,7 @@ public class EncoderDecoderDevice extends QSYSPeripheralDevice {
                     metric = EnumTypeHandler.getMetricByName(EncoderDecoderDeviceMetric.class, controlName.replace(indexNumber, "%s"));
                     if (metric != null) {
                         //Need to change index placeholder to an actual index
-                        metric.setMetric(String.format(metric.getMetric(), indexNumber));
-                        metric.setProperty(String.format(metric.getProperty(), indexNumber));
+                        metricName = String.format(metric.getMetric(), indexNumber);
                     }
                 }
                 if (metric == null) {
@@ -84,7 +84,9 @@ public class EncoderDecoderDevice extends QSYSPeripheralDevice {
 
                 switch (metric){
                     default:
-                        this.getStats().put(metric.getMetric(), value);
+                        if (StringUtils.isNotNullOrEmpty(metricName)) {
+                            this.getStats().put(metricName, value);
+                        }
                         break;
                 }
             }
