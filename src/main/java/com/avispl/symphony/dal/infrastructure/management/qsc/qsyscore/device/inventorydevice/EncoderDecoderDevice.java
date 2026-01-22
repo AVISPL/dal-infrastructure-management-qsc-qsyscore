@@ -37,7 +37,7 @@ public class EncoderDecoderDevice extends QSYSPeripheralDevice {
                     !deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
                 return;
             }
-            String metricName = null;
+            String metricName;
             for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
                 String controlName = Optional.ofNullable(control.get(QSYSCoreConstant.CONTROL_NAME))
                         .map(JsonNode::asText)
@@ -48,6 +48,8 @@ public class EncoderDecoderDevice extends QSYSPeripheralDevice {
                 Pattern numericPattern = Pattern.compile(".*(\\d\\.).*");
                 Matcher matcher = numericPattern.matcher(controlName);
                 EncoderDecoderDeviceMetric metric = null;
+                metricName = null;
+
                 if (matcher.matches()) {
                     String indexNumber = matcher.group(1).replace(".", "");
                     metric = EnumTypeHandler.getMetricByName(EncoderDecoderDeviceMetric.class, controlName.replace(indexNumber, "%s"));
@@ -61,6 +63,9 @@ public class EncoderDecoderDevice extends QSYSPeripheralDevice {
                 }
                 if (metric == null) {
                     continue;
+                }
+                if (StringUtils.isNullOrEmpty(metricName)) {
+                    metricName = metric.getMetric();
                 }
                 String type = Optional.ofNullable(control.get(QSYSCoreConstant.CONTROL_TYPE)).map(JsonNode::asText).orElse("");
                 String value;
