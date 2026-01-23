@@ -66,12 +66,12 @@ public enum EncoderDecoderDeviceMetric implements DeviceMetric {
 	NET_HDMI_AVG_BITRATE("HDMI%sInput#AvgBitrate", "network.stats.hdmi.input.%s.avg.bitrate"),
 	NET_HDMI_PEAK_BITRATE("HDMI%sInput#PeakBitrate", "network.stats.hdmi.input.%s.peak.bitrate"),
 	NET_HDMI_DROP_COUNT("HDMI%sInput#DropCount", "network.stats.hdmi.input.%s.drop.count"),
-	NET_HDMI_DSCP("HDMI%sInput#DSCP", "network.stats.hdmi.input.%s.dscp"),
-	NET_HDMI_NETWORK_TEST("HDMI%sInput#NetworkTest", "network.stats.hdmi.input.%s.network.test"),
-	NET_HDMI_NETWORK_TEST_STATUS("HDMI%sInput#NetworkTestStatus", "network.stats.hdmi.input.%s.network.test.status");
+	NET_HDMI_DSCP("HDMI%sInput#DSCP", "network.stats.hdmi.input.%s.dscp");
+//	NET_HDMI_NETWORK_TEST("HDMI%sInput#NetworkTest", "network.stats.hdmi.input.%s.network.test"),
+//	NET_HDMI_NETWORK_TEST_STATUS("HDMI%sInput#NetworkTestStatus", "network.stats.hdmi.input.%s.network.test.status");
 
-	private String metric;
-	private String property;
+	private final String metric;
+	private final String property;
 	/**
 	 * Parameterized constructor
 	 *
@@ -101,23 +101,5 @@ public enum EncoderDecoderDeviceMetric implements DeviceMetric {
 	@Override
 	public String getProperty() {
 		return property;
-	}
-
-	/**
-	 * Sets {@link #metric} value
-	 *
-	 * @param metric new value of {@link #metric}
-	 */
-	public void setMetric(String metric) {
-		this.metric = metric;
-	}
-
-	/**
-	 * Sets {@link #property} value
-	 *
-	 * @param property new value of {@link #property}
-	 */
-	public void setProperty(String property) {
-		this.property = property;
 	}
 }
