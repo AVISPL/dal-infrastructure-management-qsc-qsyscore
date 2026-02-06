@@ -107,6 +107,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	}
 
 	/**
+	 * How much time last monitoring cycle took to finish
+	 */
+	private double lastMonitoringCycleDuration;
+
+	/**
 	 * Uptime time stamp to valid one
 	 */
 	private synchronized void updateValidRetrieveStatisticsTimestamp() {
@@ -159,6 +164,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						}
 						dataFetchCompleted = true;
 					}
+
+					lastMonitoringCycleDuration = Math.max((System.currentTimeMillis() - currentTimestamp) / 1000, 1L);
+					logger.debug("Finished collecting devices statistics cycle at " + new Date() + ", total duration: " + lastMonitoringCycleDuration);
 
 					while (nextDevicesCollectionIterationTimestamp > System.currentTimeMillis()) {
 						try {
@@ -592,7 +600,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					});
 				}
 
-				retrieveMetadata(stats);
+				retrieveMetadata(stats, dynamicStatistics);
 				reconcileCacheWithDeviceMap(stats);
 
 				int currentSizeDeviceMap = deviceMap.isEmpty()
@@ -904,8 +912,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * @param stats the map where statistics will be stored
 	 * @throws Exception if there is an error during the retrieval process
 	 */
-	private void retrieveMetadata(Map<String, String> stats) throws Exception {
+	private void retrieveMetadata(Map<String, String> stats, Map<String, String> dynamicStatistics) throws Exception {
 		try {
+			dynamicStatistics.put(QSYSCoreConstant.MONITORING_CYCLE_DURATION, String.valueOf(lastMonitoringCycleDuration));
 			stats.put(QSYSCoreConstant.ADAPTER_VERSION,
 					getDefaultValueForNullData(adapterProperties.getProperty("aggregator.version")));
 			stats.put(QSYSCoreConstant.ADAPTER_BUILD_DATE,
@@ -913,8 +922,8 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 			long adapterUptime = System.currentTimeMillis() - adapterInitializationTimestamp;
 			stats.put(QSYSCoreConstant.ADAPTER_UPTIME_MIN, String.valueOf(adapterUptime / (1000 * 60)));
-			stats.put(QSYSCoreConstant.ADAPTER_UPTIME, formatUpTime(String.valueOf(adapterUptime / 1000)));
-			stats.put(QSYSCoreConstant.SYSTEM_MONITORING_CYCLE, formatUpTime(String.valueOf(getMonitoringRate()*60)));
+			stats.put(QSYSCoreConstant.ADAPTER_UPTIME, formatUpTime(adapterUptime / 1000));
+			stats.put(QSYSCoreConstant.SYSTEM_MONITORING_CYCLE, String.valueOf(getMonitoringRate()));
 		} catch (Exception e) {
 			logger.error("Failed to populate metadata information", e);
 		}
@@ -1533,42 +1542,32 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	}
 
 	/**
-	 * Formats uptime from a string representation "hh:mm:ss" into "X hour(s) Y minute(s)" format.
+	 * Formats uptime from a string representation "hh:mm:ss" into "X hr Y min" format.
 	 *
-	 * @param time the uptime string to format
+	 * @param uptimeSeconds the uptime string to format
 	 * @return formatted uptime string or "None" if input is invalid
 	 */
-	private String formatUpTime(String time) {
-		int seconds = Integer.parseInt(time);
-		if (seconds < 0) {
-			return QSYSCoreConstant.NONE_VALUE;
-		}
+	public static String formatUpTime(long uptimeSeconds) {
+		StringBuilder normalizedUptime = new StringBuilder();
 
-		int days = seconds / (24 * 3600);
-		seconds %= 24 * 3600;
-		int hours = seconds / 3600;
-		seconds %= 3600;
-		int minutes = seconds / 60;
-		seconds %= 60;
+		long seconds = uptimeSeconds % 60;
+		long minutes = uptimeSeconds % 3600 / 60;
+		long hours = uptimeSeconds % 86400 / 3600;
+		long days = uptimeSeconds / 86400;
 
-		StringBuilder result = new StringBuilder();
 		if (days > 0) {
-			result.append(days).append(" day(s) ");
+			normalizedUptime.append(days).append(" d ");
 		}
 		if (hours > 0) {
-			result.append(hours).append(" hour(s) ");
+			normalizedUptime.append(hours).append(" hr ");
 		}
 		if (minutes > 0) {
-			result.append(minutes).append(" minute(s) ");
+			normalizedUptime.append(minutes).append(" min ");
 		}
 		if (seconds > 0) {
-			result.append(seconds).append(" second(s) ");
+			normalizedUptime.append(seconds).append(" sec");
 		}
-
-		if (result.length() == 0) {
-			return "0 second(s)";
-		}
-		return result.toString().trim();
+		return normalizedUptime.toString().trim();
 	}
 
 	/**
