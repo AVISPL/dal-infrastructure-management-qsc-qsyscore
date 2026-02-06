@@ -914,6 +914,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			long adapterUptime = System.currentTimeMillis() - adapterInitializationTimestamp;
 			stats.put(QSYSCoreConstant.ADAPTER_UPTIME_MIN, String.valueOf(adapterUptime / (1000 * 60)));
 			stats.put(QSYSCoreConstant.ADAPTER_UPTIME, formatUpTime(String.valueOf(adapterUptime / 1000)));
+			stats.put(QSYSCoreConstant.SYSTEM_MONITORING_CYCLE, formatUpTime(String.valueOf(getMonitoringRate()*60)));
 		} catch (Exception e) {
 			logger.error("Failed to populate metadata information", e);
 		}

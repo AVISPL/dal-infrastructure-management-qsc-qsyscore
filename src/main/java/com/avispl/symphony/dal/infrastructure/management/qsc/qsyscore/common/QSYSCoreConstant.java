@@ -105,6 +105,7 @@ public class QSYSCoreConstant {
 	public static final String ADAPTER_VERSION = "AdapterVersion";
 	public static final String ADAPTER_BUILD_DATE = "AdapterBuildDate";
 	public static final String ADAPTER_UPTIME_MIN = "AdapterUptime(min)";
+	public static final String SYSTEM_MONITORING_CYCLE = "MonitoringCycleInterval(min)";
 	public static final String ADAPTER_UPTIME = "AdapterUptime";
 	public static final String NULL = "Null";
 	public static final String NONE_VALUE = "None";
