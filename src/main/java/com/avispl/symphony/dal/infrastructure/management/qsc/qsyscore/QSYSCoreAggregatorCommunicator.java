@@ -166,7 +166,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					}
 
 					lastMonitoringCycleDuration = Math.max((System.currentTimeMillis() - currentTimestamp) / 1000, 1L);
-					logger.debug("Finished collecting devices statistics cycle at " + new Date() + ", total duration: " + lastMonitoringCycleDuration);
+					if (logger.isDebugEnabled()) {
+						logger.debug("Finished collecting devices statistics cycle at " + new Date() + ", total duration: " + lastMonitoringCycleDuration);
+					}
 
 					while (nextDevicesCollectionIterationTimestamp > System.currentTimeMillis()) {
 						try {
@@ -180,7 +182,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						break loop;
 					}
 					if (dataFetchCompleted) {
-						nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + 30000;
+						nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + (getMonitoringRate() * 60000L);
 						dataFetchCompleted = false;
 					}
 
