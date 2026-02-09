@@ -109,7 +109,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * How much time last monitoring cycle took to finish
 	 */
-	private double lastMonitoringCycleDuration;
+	private long lastMonitoringCycleDuration;
 
 	/**
 	 * Uptime time stamp to valid one
