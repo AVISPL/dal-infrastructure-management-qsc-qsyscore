@@ -90,6 +90,7 @@ public class QSYSCoreConstant {
 	public static final String RECEIVER_DEVICE = "input_box";
 	public static final String LOUDSPEAKER_DEVICE = "lua_speaker";
 	public static final String STATUS_AMP_DEVICE = "amplifier_cxq_status";
+	public static final String STATUS_NV_ENCODER_DECODER = "vstreamer_nv1smb_status";
 
 	public static final String MONITORING_PROXY = "monitoring_proxy";
 	public static final String PLUGIN = "PLUGIN";
@@ -100,10 +101,11 @@ public class QSYSCoreConstant {
 	public static final String LED_BRIGHTNESS_CURRENT_VALUE = "LEDBrightnessCurrentValue";
 
 	//MetaData
-	public static final String MONITORING_CYCLE_DURATION = "LastMonitoringCycleDuration(s)";
+	public static final String MONITORING_CYCLE_DURATION = "LastMonitoringCycleDuration(sec)";
 	public static final String ADAPTER_VERSION = "AdapterVersion";
 	public static final String ADAPTER_BUILD_DATE = "AdapterBuildDate";
 	public static final String ADAPTER_UPTIME_MIN = "AdapterUptime(min)";
+	public static final String SYSTEM_MONITORING_CYCLE = "MonitoringCycleInterval(min)";
 	public static final String ADAPTER_UPTIME = "AdapterUptime";
 	public static final String NULL = "Null";
 	public static final String NONE_VALUE = "None";
@@ -113,7 +115,7 @@ public class QSYSCoreConstant {
 	public static final List<String> ON_COLOR = Arrays.asList("White", "Green", "Blue", "Red", "Yellow", "Orange", "Cyan", "Pink");
 	public static final Set<String> SUPPORTED_DEVICE_TYPE = new HashSet<>(
 			Arrays.asList(CAMERA_DEVICE, PROCESSOR_DEVICE, DISPLAY_DEVICE, STREAM_INPUT_DEVICE, STREAM_OUTPUT_DEVICE, VIDEO_IO_DEVICE, VIDEO_SOURCE_DEVICE, CONTROL_INTERFACE_DEVICE, MONITORING_PROXY,
-					PLUGIN, TRANSMITTER_DEVICE, AMPLIFIER_DEVICE, RECEIVER_DEVICE, LOUDSPEAKER_DEVICE, STATUS_AMP_DEVICE));
+					PLUGIN, TRANSMITTER_DEVICE, AMPLIFIER_DEVICE, RECEIVER_DEVICE, LOUDSPEAKER_DEVICE, STATUS_AMP_DEVICE, STATUS_NV_ENCODER_DECODER));
 	public static final List<String> PLUGIN_LIST = Arrays.asList(SENNHEISER, MIDDLE_ATLANTIC, NETGEAR);
 	public static final List<String> LIST_ONLINE_STATUS = Arrays.asList("Ok", "Compromised", "Fault","Initializing");
 	/**
@@ -146,6 +148,7 @@ public class QSYSCoreConstant {
 	public static final String DISPLAY_TYPE = "Display";
 	public static final String STREAM_IO_TYPE = "Streaming I/O";
 	public static final String VIDEO_IO_TYPE = "Video I/O";
+	public static final String ENCODER_DECODER_TYPE = "Encoder/Decoder";
 	public static final String VIDEO_SOURCE_TYPE = "Video Source";
 	public static final String CONTROL_INTERFACE_TYPE = "Control Interface";
 	public static final String EXTERNAL = "External";
