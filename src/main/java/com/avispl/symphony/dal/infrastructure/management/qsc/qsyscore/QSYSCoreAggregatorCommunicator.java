@@ -182,7 +182,12 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						break loop;
 					}
 					if (dataFetchCompleted) {
-						nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + (getMonitoringRate() * 60000L);
+						try {
+							nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + (getMonitoringRate() * 60000L);
+						} catch (NoSuchMethodError nsme) {
+							nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + 60000L;
+							logger.warn("Unsupported feature: getMonitoringRate isn't available on current Cloud Connector version.", nsme);
+						}
 						dataFetchCompleted = false;
 					}
 
@@ -925,7 +930,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			long adapterUptime = System.currentTimeMillis() - adapterInitializationTimestamp;
 			stats.put(QSYSCoreConstant.ADAPTER_UPTIME_MIN, String.valueOf(adapterUptime / (1000 * 60)));
 			stats.put(QSYSCoreConstant.ADAPTER_UPTIME, formatUpTime(adapterUptime / 1000));
-			stats.put(QSYSCoreConstant.SYSTEM_MONITORING_CYCLE, String.valueOf(getMonitoringRate()));
+			try {
+				stats.put(QSYSCoreConstant.SYSTEM_MONITORING_CYCLE, String.valueOf(getMonitoringRate()));
+			} catch (NoSuchMethodError nsme){
+				logger.warn("Unsupported feature: getMonitoringRate isn't available on current Cloud Connector version.", nsme);
+			}
 		} catch (Exception e) {
 			logger.error("Failed to populate metadata information", e);
 		}
