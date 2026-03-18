@@ -12,7 +12,8 @@ package com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.common;
  * @since 1.0.0
  */
 public enum MonitoringProxyDeviceMetric {
-	STATUS("Status","status");
+	STATUS("Status","status"),
+	OTHER("Other","other");
 
 	private final String metric;
 	private final String property;
