@@ -36,9 +36,11 @@ public class MonitoringProxyDevice extends QSYSPeripheralDevice {
 		if (deviceControl.hasNonNull(QSYSCoreConstant.RESULT) && deviceControl.get(QSYSCoreConstant.RESULT).hasNonNull(QSYSCoreConstant.CONTROLS)) {
 			for (JsonNode control : deviceControl.get(QSYSCoreConstant.RESULT).get(QSYSCoreConstant.CONTROLS)) {
 				String nameControl = control.get(QSYSCoreConstant.CONTROL_NAME).asText();
+				String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
 				if (nameControl.equals(MonitoringProxyDeviceMetric.STATUS.getProperty())) {
-					String value = control.hasNonNull(QSYSCoreConstant.CONTROL_VALUE_STRING) ? control.get(QSYSCoreConstant.CONTROL_VALUE_STRING).asText() : QSYSCoreConstant.DEFAUL_DATA;
 					this.getStats().put(MonitoringProxyDeviceMetric.STATUS.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
+				} else if (nameControl.equals(MonitoringProxyDeviceMetric.OTHER.getProperty())) {
+					this.getStats().put(MonitoringProxyDeviceMetric.OTHER.getMetric(), StringUtils.isNotNullOrEmpty(value) ? value : QSYSCoreConstant.DEFAUL_DATA);
 				}
 			}
 			super.updateStatusMessage();
