@@ -139,12 +139,12 @@ For more information related to supported devices and their monitorable properti
 
 If none of the recommended steps help, please enter an SOS ticket at {https://avi-spl.atlassian.net/servicedesk/customer/portals}
 
-## What Melody can do with it:
+## What AI Assistant can do with it:
 - Find Q-SYS Aggregated Devices monitored by Q-SYS Core Aggregator
 - Verify Q-SYS Core Aggregator configuration
 - Identify QSC and supported third-party peripheral devices
 
-## What Melody cannot do with it:
+## What AI Assistant cannot do with it:
 - Provision devices automatically
 - Create or modify Q-SYS Designer configurations
 - Configure Q-SYS Core redundancy modes
