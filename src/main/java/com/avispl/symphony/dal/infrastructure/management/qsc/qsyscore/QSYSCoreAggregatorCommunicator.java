@@ -52,7 +52,6 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCo
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.QSYSCoreSystemMetric;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.RedundancyWrapper;
 import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.rpc.RpcMethod;
-import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.statistics.DynamicStatisticsDefinitions;
 import com.avispl.symphony.dal.util.ControllablePropertyFactory;
 import com.avispl.symphony.dal.util.StringUtils;
 
@@ -163,9 +162,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 							retrieveAggregatedDeviceByIdList(this.deviceIds);
 						}
 						dataFetchCompleted = true;
+						lastMonitoringCycleDuration = Math.max((System.currentTimeMillis() - currentTimestamp) / 1000, 1L);
 					}
 
-					lastMonitoringCycleDuration = Math.max((System.currentTimeMillis() - currentTimestamp) / 1000, 1L);
 					if (logger.isDebugEnabled()) {
 						logger.debug("Finished collecting devices statistics cycle at " + new Date() + ", total duration: " + lastMonitoringCycleDuration);
 					}
@@ -182,7 +181,12 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						break loop;
 					}
 					if (dataFetchCompleted) {
-						nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + (getMonitoringRate() * 60000L);
+						try {
+							nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + (getMonitoringRate() * 60000L);
+						} catch (NoSuchMethodError nsme) {
+							nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + 60000L;
+							logger.warn("Unsupported feature: getMonitoringRate isn't available on current Cloud Connector version.", nsme);
+						}
 						dataFetchCompleted = false;
 					}
 
@@ -594,7 +598,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 									, qrcExecutorService).whenComplete((unused, throwable) -> {
 						if (logger.isDebugEnabled() && throwable == null) {
 							logger.debug("QRC Process is completed. Ready for the new cycle when getMultipleStatistics() call is addressed.");
-						} else {
+						} else if (throwable != null) {
 							logger.error("Unable to retrieve QRC Data.", throwable);
 						}
 						stats.putAll(qrcStatistics);
@@ -925,7 +929,11 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			long adapterUptime = System.currentTimeMillis() - adapterInitializationTimestamp;
 			stats.put(QSYSCoreConstant.ADAPTER_UPTIME_MIN, String.valueOf(adapterUptime / (1000 * 60)));
 			stats.put(QSYSCoreConstant.ADAPTER_UPTIME, formatUpTime(adapterUptime / 1000));
-			stats.put(QSYSCoreConstant.SYSTEM_MONITORING_CYCLE, String.valueOf(getMonitoringRate()));
+			try {
+				stats.put(QSYSCoreConstant.SYSTEM_MONITORING_CYCLE, String.valueOf(getMonitoringRate()));
+			} catch (NoSuchMethodError nsme){
+				logger.warn("Unsupported feature: getMonitoringRate isn't available on current Cloud Connector version.", nsme);
+			}
 		} catch (Exception e) {
 			logger.error("Failed to populate metadata information", e);
 		}
@@ -2017,7 +2025,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					propertyListed = historicalProperties.contains(propertyName);
 				}
 			}
-			if (propertyListed && DynamicStatisticsDefinitions.checkIfExists(propertyName)) {
+			if (propertyListed) {
 				dynamicStatistics.put(propertyName, propertyValue);
 			} else {
 				staticStatistics.put(propertyName, propertyValue);
