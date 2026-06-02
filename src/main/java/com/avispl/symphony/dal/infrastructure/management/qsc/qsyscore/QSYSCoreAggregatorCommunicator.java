@@ -750,6 +750,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					List<AdvancedControllableProperty> controls = aggregatedDevice.getControllableProperties();
 					controls.clear();
 					controls.add(ControllablePropertyFactory.createText(QSYSCoreConstant.EMPTY,QSYSCoreConstant.EMPTY));
+					aggregatedDevice.setControllableProperties(controls);
 				}
 				resultAggregatedDeviceList.add(aggregatedDevice);
 			}
@@ -868,7 +869,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				localExtStats.getDynamicStatistics().clear();
 			}
 			if (localExtStats.getControllableProperties() != null) {
-				localExtStats.getControllableProperties().clear();
+				localExtStats.setControllableProperties(new ArrayList<>());
 			}
 		}
 		if (executorService != null) {
