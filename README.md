@@ -1,20 +1,24 @@
 # Q-SYS Core Integration - Capabilities & Configuration
 This document covers Q-SYS Core Aggregator Capabilities and Configuration.
 
+Note: Not to be confused with Q-SYS Reflect Aggregator.
+
 Symphony integrates with Q-SYS Core processors to provide comprehensive monitoring and control of Q-SYS environments. The adapter communicates directly with Q-SYS Core devices and exposes monitoring, control, aggregated device management, and peripheral visibility through Symphony.
 
 Main features are: real-time Q-SYS Core monitoring, aggregated QSC and third-party peripheral monitoring, gain component control, redundancy monitoring, streaming and networked AV visibility, and device inventory management.
 
-## Main use cases
+## Main use cases for Q-SYS Core Integration
 - **Monitor** Q-SYS Core health, processor status, network state, redundancy state, and device metrics
 - **Track** QSC and non-QSC aggregated peripherals including amplifiers, displays, cameras, streaming I/O, and video devices
 - **Control** Gain component values, mute states, bypass states, and inversion controls
 - **Inventory** Q-SYS ecosystem devices and associated peripheral components
 - **Visualize** historical metrics such as temperature, memory usage, and impedance graphs
 
-## Q-SYS Core Configuration and Device Provisioning
+## Q-SYS Core Connection Setup and Device Provisioning
 
-### Configuration
+### Connection Setup
+
+Note: The connection configuration below describe a successful Q-SYS Core integration setup, these should not be confused with the adapter configuration properties. They are not to be infered as troubleshooting checks and should not be used when diagnosing specific errors unless a troubleshooting entry (provided in the Troubleshooting section) explicitly references them.
 
 The Q-SYS Core Aggregator device must be configured in Symphony with the following values:
 
@@ -48,21 +52,21 @@ Required provisioning values:
 - Manufacturer
 - Model
 
-### Filtering Device(s) and Component(s)
+### Q-SYS Core Adapter configuration properties - For filtering Device(s) and component(s)
 The Q-SYS Core Aggregator supports optional filtering and configuration properties to tune monitoring behavior.
 
 | Property | Description |
-|---|---|
-| filterGainComponentByName | List of gain component names |
-| filterDeviceByName | List of aggregated device names |
-| filterDeviceByQSYSType | List of QSYS device types |
-| filterPluginByName | List of plugin names |
-| qrcPort | TCP/IP port used for QRC commands | 1710 by default |
-| historicalProperties | Enables graphing support for historical metrics. Enabled for supported device properties |
+| --- | --- |
+| filterGainComponentByName | The list of gain component names. Default: blank (shows NO gain components). |
+| filterDeviceByName | The list of aggregated devices. Default: blank (shows all devices). |
+| filterDeviceByQSYSType | The list of Q-SYS device types. |
+| filterPluginByName | The list of plugin names.Default: blank (shows NO plugins). |
+| qrcPort | TCP/IP port used to send QRC commands. Default: 1710.|
+| historicalProperties | These properties vary by Device Type: Processor: ProcessorTemperature(C), SystemTemperature(C); Control Interface: MemoryUsage(%);Video I/O: CPUTemperature(C), I/OTemperature(C), VPUTemperature(C); Loudspeaker: HighPilotImpedance(Ohm), LowPilotImpedance(Ohm), Impedance(Ohm). Default: blank (shows all devices) |
 
 For detailed information on aggregator and its configuration, please refer to our knowledgebase -> https://symphony.knowledgeowl.com/help/q-sys-core-aggregator-technical-breakdown
 
-## Available Monitored Data
+## Available Monitored Data for Q-SYS Core Integration
 
 Q-SYS Core monitored data consists of 2 main parts: Aggregator Adapter properties, Aggregated Device extended properties (QSC Peripheral device properties, and External/Non-QSC device properties).
 
@@ -116,35 +120,43 @@ External devices can be linked using one of the following integration types:
 
 For more information related to supported devices and their monitorable properties, please refer to our knowledgebase -> https://symphony.knowledgeowl.com/help/q-sys-core-aggregator-technical-breakdown
 
-## Redundancy mode 
+## Q-SYS Core - Redundancy mode 
 - Q-SYS is capable of several redundant configurations to ensure a high level of overall system reliability.
 - A second or Backup Core can be paired with the Primary Core in an installation. Initially, the Primary Core is the Active Core, and the Backup Core is the Standby Core.
 - Only the Active Core has a separate group showing redundancy configuration.
 
-## Troubleshooting
+## Troubleshooting for Q-SYS Core Integration
+
+**Troubleshooting guidance**
+- If an error occurs, focus only on troubleshooting steps that are provided in the section below.
+- Do not include prerequisite/setup information.
+- Do not add unrelated configuration details from other sections.
+- If the document does not provide a direct error troubleshooting step, state that the document does not contain enough guidance for that specific issue.
+
 **Login Error**
 - Verify Q-SYS Core IP address and HTTPS accessibility
 - Confirm username/password if access control is enabled
 - Ensure port 443 is reachable
+
+**API Error**
+- Check API error description
+- Verify Q-SYS Core IP address
+- Ensure port 443 is reachable
+- Verify that device and component names do not contain unsupported characters: ! @ % ^ & # ~ \ ' <? </. Names containing these characters will cause Symphony to return an API error.
 
 **Device Discovery Issues**
 - Verify the Q-SYS design is running properly
 - Confirm Script Access is set to All or External for monitored components
 - Verify filtering properties are not excluding expected devices
 
-**Monitoring or Status Issues**
-- Confirm Q-SYS Core firmware compatibility and Q-SYS Designer version compatibility
-- Check device redundancy states and network connectivity
-- Validate plugin and Monitoring Proxy configurations for third-party devices
-
 If none of the recommended steps help, please enter an SOS ticket at {https://avi-spl.atlassian.net/servicedesk/customer/portals}
 
-## What AI Assistant can do with it:
+## What AI Assistant can do with the Q-SYS Core Integration:
 - Find Q-SYS Aggregated Devices monitored by Q-SYS Core Aggregator
 - Verify Q-SYS Core Aggregator configuration
 - Identify QSC and supported third-party peripheral devices
 
-## What AI Assistant cannot do with it:
+## What AI Assistant cannot do with the Q-SYS Core Integration:
 - Provision devices automatically
 - Create or modify Q-SYS Designer configurations
 - Configure Q-SYS Core redundancy modes
