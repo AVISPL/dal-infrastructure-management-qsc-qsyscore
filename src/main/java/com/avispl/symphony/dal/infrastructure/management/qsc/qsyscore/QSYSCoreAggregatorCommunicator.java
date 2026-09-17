@@ -55,7 +55,6 @@ import com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore.dto.rpc.Rp
 import com.avispl.symphony.dal.util.ControllablePropertyFactory;
 import com.avispl.symphony.dal.util.StringUtils;
 
-import static java.util.concurrent.CompletableFuture.runAsync;
 
 /**
  * QSYSCoreAggregatorCommunicator
@@ -132,6 +131,16 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			inProgress = true;
 		}
 
+		/**
+		 * Request the collection loop to terminate.
+		 * The loop checks {@link #inProgress} between stages, so the thread exits on its next check
+		 * instead of being killed in the middle of a request. This is the only way to stop a loader:
+		 * interrupting it is not enough on its own, because the thread may be between sleeps.
+		 */
+		void stop() {
+			inProgress = false;
+		}
+
 		@Override
 		public void run() {
 			loop:
@@ -141,6 +150,10 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						TimeUnit.MILLISECONDS.sleep(500);
 					} catch (InterruptedException e) {
 						logger.info(String.format("Sleep for 0.5 second was interrupted with error message: %s", e.getMessage()));
+						// the interrupt is the pool asking us to stop, so honour it instead of looping again
+						Thread.currentThread().interrupt();
+						inProgress = false;
+						break loop;
 					}
 
 					if (!inProgress) {
@@ -169,11 +182,15 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 						logger.debug("Finished collecting devices statistics cycle at " + new Date() + ", total duration: " + lastMonitoringCycleDuration);
 					}
 
-					while (nextDevicesCollectionIterationTimestamp > System.currentTimeMillis()) {
+					while (inProgress && nextDevicesCollectionIterationTimestamp > System.currentTimeMillis()) {
 						try {
 							TimeUnit.MILLISECONDS.sleep(1000);
 						} catch (InterruptedException e) {
 							logger.info(String.format("Sleep for 1 second was interrupted with error message: %s", e.getMessage()));
+							// the interrupt is the pool asking us to stop, so honour it instead of looping again
+							Thread.currentThread().interrupt();
+							inProgress = false;
+							break loop;
 						}
 					}
 
@@ -203,7 +220,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 	/**
 	 * Executor that runs all the async operations, that is posting and
-	 * {@link #devicesExecutionPool} is keeping track of
+	 * {@link #deviceExecutionPool} is keeping track of
 	 */
 	private ExecutorService executorService;
 	/**
@@ -212,10 +229,13 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * */
 	private ExecutorService qrcExecutorService;
 	/**
-	 * QRC process, responsible for aggregated devices collection from the remote API
+	 * QRC process, responsible for aggregated devices collection from the remote API.
+	 * Submitted to {@link #qrcExecutorService} rather than started with {@code CompletableFuture.runAsync()},
+	 * because {@link CompletableFuture#cancel(boolean)} ignores its flag and never interrupts the running task,
+	 * whereas the {@link Future} returned by {@link ExecutorService#submit(Runnable)} does.
 	 * @since 1.2.0
 	 * */
-	private CompletableFuture<?> qrcProcess;
+	private Future<?> qrcProcess;
 
 	/**
 	 * Local cache for QRC statistics, collected in {@link #qrcProcess}
@@ -309,7 +329,13 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	/**
 	 * list all thread
 	 */
-	private List<Future> deviceExecutionPool = new ArrayList<>();
+	private List<Future> deviceExecutionPool = new CopyOnWriteArrayList<>();
+
+	/**
+	 * The {@link DeviceLoader} instances behind {@link #deviceExecutionPool}, kept so that they can be
+	 * asked to stop. Cancelling the {@link Future} alone does not end a loader that is already running.
+	 */
+	private List<DeviceLoader> deviceLoaderPool = new CopyOnWriteArrayList<>();
 
 	/**
 	 * Filter component by name
@@ -347,11 +373,6 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 * Increments on each pick and wraps back to 0 at the end.
 	 */
 	private int rrIndex = 0;
-
-	/**
-	 * Pool for keeping all the async operations in, to track any operations in progress and cancel them if needed
-	 */
-	private List<Future> devicesExecutionPool = new ArrayList<>();
 
 	/**
 	 * qrcCommunicator instance
@@ -572,16 +593,13 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 					loginInfo = new LoginInfo();
 				}
 
-				retrieveTokenFromCore();
-
 				//Because there are some threads that keep running when the next getMultiple is called,
-				// so we have to stop all those threads just before the next getMultiple runs
-				if (executorService != null) {
-					for (Future future : deviceExecutionPool) {
-						future.cancel(true);
-					}
-					deviceExecutionPool.clear();
-				}
+				// so we have to stop all those threads just before the next getMultiple runs.
+				// This runs before retrieveTokenFromCore() on purpose: if the token call fails the previous
+				// cycle's loaders must still be stopped, otherwise they accumulate for as long as the Core is down.
+				stopDeviceLoaders();
+
+				retrieveTokenFromCore();
 
 				filterGainComponentByNameSet = handleGainInputFromUser(filterGainComponentByName);
 				filterPluginByNameSet = handleSplitPluginConfig();
@@ -591,18 +609,23 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				}
 				populateQSYSAggregatorMonitoringData(stats);
 
-				if (qrcProcess == null || qrcProcess.isDone() || qrcProcess.isCompletedExceptionally()) {
-					qrcProcess = runAsync(() ->
-                            populateQSYSComponent(qrcStatistics, qrcControls)
-//                            populateQSYSComponent(stats, controllableProperties);
-									, qrcExecutorService).whenComplete((unused, throwable) -> {
-						if (logger.isDebugEnabled() && throwable == null) {
-							logger.debug("QRC Process is completed. Ready for the new cycle when getMultipleStatistics() call is addressed.");
-						} else if (throwable != null) {
-							logger.error("Unable to retrieve QRC Data.", throwable);
+				// publish whatever the QRC process has collected so far, before starting the next one.
+				// The previous implementation did this from a whenComplete() callback, which wrote into the
+				// stats/controllableProperties of the cycle that started the process - by the time a slow QRC
+				// call finished those maps belonged to an already published cycle, so the data was lost.
+				stats.putAll(qrcStatistics);
+				controllableProperties.addAll(qrcControls);
+
+				if (qrcProcess == null || qrcProcess.isDone()) {
+					qrcProcess = qrcExecutorService.submit(() -> {
+						try {
+							populateQSYSComponent(qrcStatistics, qrcControls);
+							if (logger.isDebugEnabled()) {
+								logger.debug("QRC Process is completed. Ready for the new cycle when getMultipleStatistics() call is addressed.");
+							}
+						} catch (Exception e) {
+							logger.error("Unable to retrieve QRC Data.", e);
 						}
-						stats.putAll(qrcStatistics);
-						controllableProperties.addAll(qrcControls);
 					});
 				}
 
@@ -872,23 +895,61 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 				localExtStats.setControllableProperties(new ArrayList<>());
 			}
 		}
-		if (executorService != null) {
-			executorService.shutdownNow();
-			executorService = null;
+		shutdownDeviceCollectionPool();
+		// qrcProcess must be cancelled and cleared, not just left behind: the gate in getMultipleStatistics()
+		// only starts a new process once the previous one is done, so a stale unfinished one would stop QRC
+		// collection from ever restarting after a re-init.
+		if (qrcProcess != null) {
+			qrcProcess.cancel(true);
+			qrcProcess = null;
 		}
 		if (qrcExecutorService != null) {
 			qrcExecutorService.shutdownNow();
 			qrcExecutorService = null;
 		}
 		if (qrcCommunicator != null) {
+			// closing the socket is what actually releases a QRC thread parked in a blocking read -
+			// neither cancel(true) nor shutdownNow() can interrupt java.net.Socket I/O
 			qrcCommunicator.destroyChannel();
 			qrcCommunicator = null;
 		}
 		isQrcCommunicatorFirstTimeInit = true;
-		devicesExecutionPool.forEach(future -> future.cancel(true));
-		devicesExecutionPool.clear();
 		filterPluginByNameSet.clear();
 		super.internalDestroy();
+	}
+
+	/**
+	 * Ask every running {@link DeviceLoader} to leave its collection loop and drop the tasks tracking them.
+	 * The executor itself is left in place so the next cycle can reuse it.
+	 * <p>
+	 * Stopping the loaders explicitly is required: a {@link DeviceLoader} spends most of its life sleeping
+	 * inside its own loop, so {@link Future#cancel(boolean)} on its own would leave the thread running, and
+	 * with it a reference to this aggregator and everything it holds.
+	 */
+	private void stopDeviceLoaders() {
+		// snapshot and remove only what was seen, rather than clear(): submitDeviceLoader() runs from
+		// retrieveMultipleStatistics() without holding reentrantLock, so a loader submitted while this
+		// method runs would otherwise be dropped from tracking and become unstoppable
+		List<DeviceLoader> loaders = new ArrayList<>(deviceLoaderPool);
+		deviceLoaderPool.removeAll(loaders);
+		loaders.forEach(DeviceLoader::stop);
+
+		List<Future> tasks = new ArrayList<>(deviceExecutionPool);
+		deviceExecutionPool.removeAll(tasks);
+		tasks.forEach(future -> future.cancel(true));
+	}
+
+	/**
+	 * Stop the device collection loaders and shut the executor down.
+	 * Must be called before {@link #executorService} is replaced or dropped - otherwise the old pool and its
+	 * loader threads stay alive with nothing left referencing them, and can no longer be stopped at all.
+	 */
+	private void shutdownDeviceCollectionPool() {
+		stopDeviceLoaders();
+		if (executorService != null) {
+			executorService.shutdownNow();
+			executorService = null;
+		}
 	}
 
 	/**
@@ -902,6 +963,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 		if (logger.isDebugEnabled()) {
 			logger.debug("Internal init is called.");
 		}
+		super.internalInit();
 	}
 
 	/**
@@ -1623,8 +1685,14 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 			}
 			this.loginInfo.setToken(QSYSCoreConstant.AUTHORIZED);
 			this.loginInfo.setLoginDateTime(System.currentTimeMillis());
+		} catch (IOException e) {
+			throw new ResourceNotReachableException(
+					String.format("Unable to retrieve the authorization token from %s: endpoint not reachable (%s)", getHost(), e.getMessage()), e);
 		} catch (Exception e) {
-			throw new ResourceNotReachableException("Unable to retrieve the authorization token, endpoint not reachable", e);
+			// not a connectivity failure - the request never got far enough to reach the Core, or the response
+			// could not be handled. Report what actually went wrong instead of blaming the network.
+			throw new ResourceNotReachableException(
+					String.format("Unable to retrieve the authorization token from %s: %s: %s", getHost(), e.getClass().getName(), e.getMessage()), e);
 		}
 	}
 
@@ -2043,6 +2111,9 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 	 */
 	private void populateAggregatedMonitoringData(int currentSizeDeviceMap) {
 		if (executorService == null || currentSizeDeviceMap != deviceMap.size()) {
+			// the device count changed, so the pool is resized - stop the current one first, otherwise the
+			// reference is overwritten and its loader threads keep running with no way left to reach them
+			shutdownDeviceCollectionPool();
 			executorService = Executors.newFixedThreadPool(deviceStatisticsCollectionThreads);
 		}
 
@@ -2067,7 +2138,7 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 			if (deviceIdsNeedToUpdate.size() >= QSYSCoreConstant.MAX_DEVICE_QUANTITY_PER_THREAD) {
 				List<String> finalDeviceIdsNeedToUpdate = new ArrayList<>(deviceIdsNeedToUpdate);
-				deviceExecutionPool.add(executorService.submit(new DeviceLoader(finalDeviceIdsNeedToUpdate)));
+				submitDeviceLoader(finalDeviceIdsNeedToUpdate);
 				deviceIdsNeedToUpdate.clear();
 				++threadNum;
 			}
@@ -2075,10 +2146,22 @@ public class QSYSCoreAggregatorCommunicator extends RestCommunicator implements 
 
 		if (!deviceIdsNeedToUpdate.isEmpty()) {
 			List<String> finalDeviceIdsNeedToUpdate = new ArrayList<>(deviceIdsNeedToUpdate);
-			deviceExecutionPool.add(executorService.submit(new DeviceLoader(finalDeviceIdsNeedToUpdate)));
+			submitDeviceLoader(finalDeviceIdsNeedToUpdate);
 		}
 
 		--localPollingInterval;
+	}
+
+	/**
+	 * Submit a {@link DeviceLoader} for the given devices, tracking both the loader and its task so that
+	 * {@link #stopDeviceLoaders()} can shut it down later.
+	 *
+	 * @param deviceIds ids of the devices the loader is responsible for
+	 */
+	private void submitDeviceLoader(List<String> deviceIds) {
+		DeviceLoader deviceLoader = new DeviceLoader(deviceIds);
+		deviceLoaderPool.add(deviceLoader);
+		deviceExecutionPool.add(executorService.submit(deviceLoader));
 	}
 
 	/**
