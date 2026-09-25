@@ -53,7 +53,6 @@ public class ReceiverDevice extends QSYSPeripheralDevice {
 					case CHANNEL_GAIN:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), stats, createSlider(stats,
 								metricName, "-100", "20", -100f, 20f, Float.parseFloat(value)), value);
-						stats.put(getFormattedMetricNameSlider(metricName), uppercaseFirstCharacter(value));
 						break;
 					default:
 						break;
@@ -146,7 +145,6 @@ public class ReceiverDevice extends QSYSPeripheralDevice {
 					case CHANNEL_GAIN:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metricName, "-100", "20", -100f, 20f, Float.parseFloat(value)), value);
-						this.getStats().put(getFormattedMetricNameSlider(metricName), uppercaseFirstCharacter(value));
 						break;
 					default:
 						this.getStats().put(metricName, StringUtils.isNotNullOrEmpty(value) ? uppercaseFirstCharacter(value) : QSYSCoreConstant.DEFAUL_DATA);

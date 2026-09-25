@@ -242,16 +242,6 @@ public abstract class QSYSPeripheralDevice implements DeviceBehavior {
 	}
 
 	/**
-	 * Formats the given metric name by inserting "CurrentValue" before the first opening parenthesis.
-	 * @param metricName The original metric name.
-	 * @return The formatted metric name with "CurrentValue" added before the first parenthesis.
-	 */
-	public String getFormattedMetricNameSlider(String metricName){
-		metricName = metricName.replaceFirst("\\(", "CurrentValue(");
-		return metricName;
-	}
-
-	/**
 	 * Formats the metric name based on the given control data.
 	 *
 	 * @param metric containing the metric and property information.
