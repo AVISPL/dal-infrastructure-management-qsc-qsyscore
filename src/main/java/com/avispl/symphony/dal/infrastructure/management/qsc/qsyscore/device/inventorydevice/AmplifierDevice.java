@@ -54,17 +54,14 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 					case CHANNEL_GAIN:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), stats, createSlider(stats,
 								metricName, "-100", "20", -100f, 20f, Float.parseFloat(value)), value);
-						stats.put(getFormattedMetricNameSlider(metricName), value);
 						break;
 					case POWER_SAVE_THRESHOLD:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), stats, createSlider(stats,
 								metricName, "-99", "-50", -99.0f, -50.0f, Float.parseFloat(value)), value);
-						stats.put(getFormattedMetricNameSlider(metricName), value);
 						break;
 					case POWER_SAVE_TIMEOUT:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), stats, createSlider(stats,
 								metricName, "1", "99", 1.0f, 99.0f, Float.parseFloat(value)), value);
-						stats.put("PowerManagement#PowerSaveTimeoutCurrentValue", value);
 						break;
 					default:
 						break;
@@ -199,17 +196,14 @@ public class AmplifierDevice extends QSYSPeripheralDevice {
 					case CHANNEL_GAIN:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metricName, "-100", "20", -100f, 20f, Float.parseFloat(value)), value);
-						this.getStats().put(getFormattedMetricNameSlider(metricName), value);
 						break;
 					case POWER_SAVE_THRESHOLD:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metricName, "-99", "-50", -99.0f, -50.0f, Float.parseFloat(value)), value);
-						this.getStats().put(getFormattedMetricNameSlider(metricName), value);
 						break;
 					case POWER_SAVE_TIMEOUT:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metricName, "1", "99", 1.0f, 99.0f, Float.parseFloat(value)), value);
-						this.getStats().put("PowerManagement#PowerSaveTimeoutCurrentValue", value);
 						break;
 					case CHANNEL_VOLTAGE:
 					case CHANNEL_CURRENT:
