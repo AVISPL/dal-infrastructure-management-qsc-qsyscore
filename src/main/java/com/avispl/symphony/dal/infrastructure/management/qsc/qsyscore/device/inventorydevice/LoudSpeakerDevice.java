@@ -49,18 +49,15 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 					case GAIN:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), stats, createSlider(stats,
 								metricName, "-100", "20", -100f, 20f, Float.parseFloat(value)), value);
-						stats.put(QSYSCoreConstant.GAIN_CURRENT_VALUE, value);
 						break;
 					case DELAY:
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), stats, createSlider(stats,
 								metricName, "0", "2000", 0f, 2000f, Float.parseFloat(value)), value);
-						stats.put("DelayCurrentValue(ms)", value);
 						break;
 					case FULL_RANGE_HIGH_PASS_FREQ:
 						value = value.replaceAll(Pattern.quote("Hz") + "\\s*$", "");
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), stats, createSlider(stats,
 								metricName, "30", "300", 30f, 300f, Float.parseFloat(value)), value);
-						stats.put("Fullrange#HighPassFreqCurrentValue(Hz)", value);
 						break;
 					default:
 						break;
@@ -131,7 +128,6 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 						String gainValue = roundToDecimalPlaces(control.get(QSYSCoreConstant.CONTROL_VALUE), 1);
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metric.getMetric(), "-100", "20", -100f, 20f, Float.parseFloat(gainValue)), gainValue);
-						this.getStats().put(QSYSCoreConstant.GAIN_CURRENT_VALUE, gainValue);
 						break;
 					case FULL_RANGE_LIMITER:
 						JsonNode valueNode = control.get(QSYSCoreConstant.CONTROL_VALUE);
@@ -163,7 +159,6 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 						}
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metric.getMetric(), "0", "2000", 0f, 2000f, Float.parseFloat(delayMs)), delayMs);
-						this.getStats().put("DelayCurrentValue(ms)", delayMs);
 						break;
 					case FULL_RANGE_IMPEDANCE:
 					case FULL_RANGE_HIGH_PILOT_IMPEDANCE:
@@ -180,7 +175,6 @@ public class LoudSpeakerDevice extends QSYSPeripheralDevice {
 						String highPassValue = roundToDecimalPlaces(control.get(QSYSCoreConstant.CONTROL_VALUE), 1);
 						addAdvancedControlProperties(this.getAdvancedControllableProperties(), getStats(), createSlider(getStats(),
 								metric.getMetric(), "30", "300", 30f, 300f, Float.parseFloat(highPassValue)), highPassValue);
-						this.getStats().put("Fullrange#HighPassFreqCurrentValue(Hz)", highPassValue);
 						break;
 					case FULL_RANGE_OPEN:
 					case FULL_RANGE_SHORT:

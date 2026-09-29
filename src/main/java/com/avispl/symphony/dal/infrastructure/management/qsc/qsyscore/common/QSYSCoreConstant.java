@@ -55,7 +55,6 @@ public class QSYSCoreConstant {
 	public static final String HOSTNAME = "Hostname";
 	public static final String REDUNDANCY = "Redundancy";
 	public static final String NUMBER_OF_DEVICE = "MonitoredDevicesTotal";
-	public static final String GAIN_CURRENT_VALUE = "GainCurrentValue(dB)";
 	public static final String CMD_RESULT = "\"result\"";
 	public static final String CMD_METHOD = "\"method\"";
 	public static final String CMD_ERROR = "\"error\"";
@@ -97,8 +96,6 @@ public class QSYSCoreConstant {
 	public static final String SENNHEISER = "SennheiserTeamConnectCeiling";
 	public static final String NETGEAR = "EnterpriseManagerNetgearAVLineSwitch";
 	public static final String MIDDLE_ATLANTIC = "MiddleAtlanticNEXSYSUPS";
-	public static final String AUDIO_LEVEL_CURRENT_VALUE = "AudioLevelCurrentValue(dB)";
-	public static final String LED_BRIGHTNESS_CURRENT_VALUE = "LEDBrightnessCurrentValue";
 
 	//MetaData
 	public static final String MONITORING_CYCLE_DURATION = "LastMonitoringCycleDuration(sec)";

@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.avispl.symphony.dal.infrastructure.management.qsc.qsyscore</groupId>
   <artifactId>symphony-dal-infrastructure-management-qsc-qsyscore</artifactId>
-  <version>1.2.3</version>
+  <version>1.2.4</version>
   <properties>
     <symphonyApiVersion>RELEASE</symphonyApiVersion>
     <timestamp>${maven.build.timestamp}</timestamp>
@@ -111,13 +111,13 @@
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
       <scope>provided</scope>
-      <version>2.21.1</version>
+      <version>2.21.4</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <scope>provided</scope>
-      <version>2.21.1</version>
+      <version>2.21.5</version>
     </dependency>
     <dependency>
       <groupId>com.jcraft</groupId>
